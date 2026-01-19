@@ -1,0 +1,222 @@
+/* Theme System - Color Palettes */
+
+/* Default Theme (Blue) */
+:root,
+[data-theme="default"] {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --secondary: #93c5fd;
+    --accent: #3b82f6;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border: #e5e7eb;
+}
+
+/* Forest Theme (Green) */
+[data-theme="forest"] {
+    --primary: #059669;
+    --primary-hover: #047857;
+    --secondary: #6ee7b7;
+    --accent: #10b981;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f0fdf4;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border: #d1fae5;
+}
+
+/* Amethyst Theme (Purple) */
+[data-theme="amethyst"] {
+    --primary: #7c3aed;
+    --primary-hover: #6d28d9;
+    --secondary: #c4b5fd;
+    --accent: #8b5cf6;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f3ff;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border: #ddd6fe;
+}
+
+/* Dark Theme (Default-Dark) */
+[data-theme="default-dark"] {
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --secondary: #1e40af;
+    --accent: #60a5fa;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #60a5fa;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --border: #374151;
+}
+
+/* Forest Dark Theme */
+[data-theme="forest-dark"] {
+    --primary: #10b981;
+    --primary-hover: #059669;
+    --secondary: #064e3b;
+    --accent: #34d399;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #60a5fa;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --border: #374151;
+}
+
+/* Amethyst Dark Theme */
+[data-theme="amethyst-dark"] {
+    --primary: #8b5cf6;
+    --primary-hover: #7c3aed;
+    --secondary: #4c1d95;
+    --accent: #a78bfa;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #60a5fa;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --border: #374151;
+}
+
+
+/* Apply theme to UI components */
+[data-theme] {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme] .primary-color {
+    color: var(--primary);
+}
+
+[data-theme] .bg-primary {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+[data-theme] .bg-secondary {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme] .text-primary {
+    color: var(--text-primary);
+}
+
+[data-theme] .text-secondary {
+    color: var(--text-secondary);
+}
+
+[data-theme] .border-primary {
+    border-color: var(--primary);
+}
+
+[data-theme] .border-secondary {
+    border-color: var(--secondary);
+}
+
+/* Update component colors based on theme */
+[data-theme] button.primary,
+[data-theme] .btn-primary {
+    background-color: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+    transition: background-color 0.2s ease;
+}
+
+[data-theme] button.primary:hover,
+[data-theme] .btn-primary:hover {
+    background-color: var(--primary-hover);
+}
+
+[data-theme] input:focus,
+[data-theme] select:focus,
+[data-theme] textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--secondary);
+}
+
+[data-theme] .badge-primary {
+    background-color: var(--primary);
+    color: #ffffff;
+}
+
+[data-theme] .badge-success {
+    background-color: var(--success);
+    color: #ffffff;
+}
+
+[data-theme] .badge-error {
+    background-color: var(--error);
+    color: #ffffff;
+}
+
+/* Sidebar and navigation */
+[data-theme] #sidebar {
+    border-right-color: var(--border);
+}
+
+[data-theme] .nav-item.active {
+    background-color: var(--secondary);
+    color: var(--primary);
+}
+
+/* Header */
+[data-theme] header {
+    background-color: var(--bg-primary);
+    border-bottom-color: var(--border);
+}
+
+/* KPI Cards */
+[data-theme] .kpi-card {
+    border-color: var(--border);
+}
+
+[data-theme] .kpi-card:hover {
+    border-color: var(--primary);
+}
+
+/* Tables */
+[data-theme] table {
+    color: var(--text-primary);
+}
+
+[data-theme] tbody tr:hover {
+    background-color: var(--bg-secondary);
+}
+
+/* Status indicators */
+[data-theme] .status-active {
+    background-color: var(--success);
+}
+
+[data-theme] .status-inactive {
+    background-color: var(--error);
+}
+
+[data-theme] .status-pending {
+    background-color: var(--warning);
+}

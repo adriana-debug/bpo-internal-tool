@@ -1,0 +1,59 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test files
+test_*.py
+quick_test.py
+
+# Database files (will be created fresh or mounted via volume)
+*.db
+*.sqlite
+*.sqlite3
+
+# Seed and reset scripts (not needed in production)
+seed_*.py
+reset_db.py
+
+# Cookies and temp files
+*.txt
+!requirements.txt
+
+# Documentation
+*.md
+
+# Claude/AI config
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data directory (mounted separately)
+data/

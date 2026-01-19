@@ -1,0 +1,50 @@
+<!-- Sidebar Component -->
+<aside id="sidebar" class="fixed left-0 top-0 z-40 h-screen w-64 bg-white dark:bg-dark border-r border-gray-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-200">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+            <iconify-icon icon="solar:buildings-2-bold-duotone" class="text-xl text-white"></iconify-icon>
+        </div>
+        <span class="text-lg font-bold text-gray-900">BPO Platform</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="p-4 space-y-1 overflow-y-auto h-[calc(100vh-80px)]">
+        {% set categories = {
+            'dashboard': 'Dashboard',
+            'operations': 'Operations',
+            'hr_people': 'HR & People',
+            'admin': 'Administration'
+        } %}
+
+        {% for cat_key, cat_name in categories.items() %}
+            {% set cat_modules = modules | selectattr('category', 'equalto', cat_key) | list %}
+            {% if cat_modules %}
+                {% if cat_key != 'dashboard' %}
+                <div class="pt-4">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ cat_name }}</p>
+                {% endif %}
+
+                {% for mod in cat_modules %}
+                    <a href="{{ mod.route }}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                              {% if current_route == mod.route %}
+                              bg-primary/10 text-primary font-medium
+                              {% else %}
+                              text-gray-600 hover:bg-gray-100
+                              {% endif %}">
+                        <iconify-icon icon="{{ mod.icon }}" class="text-xl"></iconify-icon>
+                        <span>{{ mod.display_name }}</span>
+                    </a>
+                {% endfor %}
+
+                {% if cat_key != 'dashboard' %}
+                </div>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </nav>
+</aside>
+
+<!-- Mobile Sidebar Overlay -->
+<div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden" onclick="closeSidebar()"></div>

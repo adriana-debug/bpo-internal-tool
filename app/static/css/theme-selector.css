@@ -1,0 +1,69 @@
+/* New Minimal Theme Selector */
+#theme-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background-color: var(--bg-secondary);
+    border-radius: 9999px;
+    border: 1px solid var(--border);
+}
+
+#theme-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.theme-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+    box-shadow: 0 0 0 0 rgba(0,0,0,0);
+}
+
+.theme-swatch:hover {
+    transform: scale(1.1);
+}
+
+.theme-swatch.active {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--bg-primary);
+}
+
+#dark-mode-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#dark-mode-toggle:hover {
+    background-color: var(--border);
+    color: var(--text-primary);
+}
+
+#dark-mode-toggle .icon-sun,
+#dark-mode-toggle .icon-moon {
+    display: none;
+}
+
+/* Show sun icon in dark mode, moon icon in light mode */
+.dark #dark-mode-toggle .icon-sun {
+    display: block;
+}
+
+html:not(.dark) #dark-mode-toggle .icon-moon {
+    display: block;
+}

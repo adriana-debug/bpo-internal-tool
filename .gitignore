@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cookies and temp files
+cookies.txt
+newcookies.txt
+cookiestest.txt
+*cookies*.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+nul
+
+# Data directory
+data/
+
+# Claude/AI config
+.claude/

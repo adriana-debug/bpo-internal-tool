@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bpo-platform
+    ports:
+      - "8005:8005"
+    environment:
+      - DATABASE_URL=sqlite:///./bpo_platform.db
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+    volumes:
+      # Persist database outside container
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: MySQL database for production
+  # Uncomment below and update DATABASE_URL to use MySQL
+  # db:
+  #   image: mysql:8.0
+  #   container_name: bpo-mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+  #     MYSQL_DATABASE: bpo_platform
+  #     MYSQL_USER: ${MYSQL_USER:-bpo_user}
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:-bpo_password}
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   ports:
+  #     - "3306:3306"
+  #   restart: unless-stopped
+
+# volumes:
+#   mysql_data:
