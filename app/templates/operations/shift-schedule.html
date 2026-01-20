@@ -48,11 +48,14 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed left-0 top-0 z-40 h-screen w-64 bg-white dark:bg-dark border-r border-gray-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-200">
         <!-- Logo -->
-        <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <iconify-icon icon="solar:buildings-2-bold-duotone" class="text-xl text-white"></iconify-icon>
+        <div class="flex items-center gap-3 px-4 py-5 border-b border-gray-100 dark:border-gray-700">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style="background: linear-gradient(135deg, var(--primary), var(--secondary));">
+                <iconify-icon icon="solar:buildings-3-bold-duotone" class="text-2xl text-white"></iconify-icon>
             </div>
-            <span class="text-lg font-bold text-gray-900">BPO Platform</span>
+            <div class="flex flex-col">
+                <span class="text-sm font-bold text-gray-900 dark:text-white leading-tight">BPO Internal</span>
+                <span class="text-xs font-medium text-primary">Platform</span>
+            </div>
         </div>
 
         <!-- Navigation -->

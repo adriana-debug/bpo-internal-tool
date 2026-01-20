@@ -33,6 +33,7 @@ class User(Base):
     role = relationship("Role", back_populates="users")
     custom_permissions = relationship("UserModulePermission", foreign_keys="UserModulePermission.user_id", back_populates="user", cascade="all, delete-orphan")
     shift_schedules = relationship("ShiftSchedule", back_populates="user", cascade="all, delete-orphan")
+    dtr_records = relationship("DailyTimeRecord", back_populates="user", cascade="all, delete-orphan")
 
 
 class ShiftSchedule(Base):
@@ -52,3 +53,25 @@ class ShiftSchedule(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     user = relationship("User", back_populates="shift_schedules")
+
+
+class DailyTimeRecord(Base):
+    __tablename__ = "daily_time_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), index=True)
+    date = Column(Date, index=True)
+    scheduled_shift = Column(String(50), nullable=True)  # "9am to 5pm"
+    time_in = Column(Time, nullable=True)
+    time_out = Column(Time, nullable=True)
+    break_in = Column(Time, nullable=True)
+    break_out = Column(Time, nullable=True)
+    total_hours = Column(String(10), nullable=True)  # "8.5" hours
+    overtime_hours = Column(String(10), nullable=True)  # "1.5" hours
+    status = Column(String(20), default="Present")  # Present, Late, Absent, Incomplete, On Leave, Rest Day
+    remarks = Column(String(500), nullable=True)
+    is_manual_entry = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="dtr_records")

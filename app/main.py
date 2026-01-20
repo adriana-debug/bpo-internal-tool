@@ -8,7 +8,7 @@ from datetime import timedelta
 from app.core.database import engine, get_db, Base
 from app.core.config import settings
 from app.core.security import create_access_token, decode_token
-from app.models.user import User
+from app.models.user import User, DailyTimeRecord
 from app.models.rbac import Role, Module, RoleModulePermission, UserModulePermission
 from app.services.auth_service import authenticate_user, create_user, get_user_by_email
 from app.services.rbac_service import (
@@ -32,6 +32,17 @@ from app.services.employee_service import (
     get_employees_for_assessment
 )
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeFilter, EmployeeResponse, EmployeeListResponse
+from app.schemas.dtr import DTRCreate, DTRUpdate, DTRFilter
+from app.services.dtr_service import (
+    get_dtr_records,
+    get_dtr_by_id,
+    create_dtr_record,
+    update_dtr_record,
+    delete_dtr_record,
+    get_dtr_statistics,
+    get_filter_options as get_dtr_filter_options,
+    bulk_create_dtr_records
+)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -114,7 +125,7 @@ async def login(
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
 
-    response = RedirectResponse(url="/dashboard", status_code=302)
+    response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -229,6 +240,19 @@ async def shift_schedule(
     })
 
 
+@app.get("/operations/dtr", response_class=HTMLResponse)
+async def daily_time_record(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "view"))
+):
+    modules = get_accessible_modules(db, user)
+    return templates.TemplateResponse("operations/dtr.html", {
+        "request": request,
+        "user": user,
+        "modules": modules,
+        "current_route": "/operations/dtr"
+    })
 
 
 # ============== API Endpoints ==============
@@ -877,6 +901,213 @@ async def upload_shift_schedule(
         raise HTTPException(status_code=500, detail=f"Error uploading schedule: {str(e)}")
 
 
+# ============== DTR API Endpoints ==============
+
+@app.get("/api/dtr")
+async def get_dtr_list(
+    request: Request,
+    search: str = None,
+    campaign: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    shift: str = None,
+    status: str = None,
+    page: int = 1,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "view"))
+):
+    """Get DTR records with filtering and pagination"""
+    from datetime import datetime
+
+    filters = DTRFilter(
+        search=search,
+        campaign=campaign,
+        date_from=datetime.strptime(date_from, "%Y-%m-%d").date() if date_from else None,
+        date_to=datetime.strptime(date_to, "%Y-%m-%d").date() if date_to else None,
+        shift=shift,
+        status=status,
+        page=page,
+        limit=limit
+    )
+
+    return get_dtr_records(db, filters)
+
+
+@app.get("/api/dtr/statistics")
+async def get_dtr_stats(
+    date_from: str = None,
+    date_to: str = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "view"))
+):
+    """Get DTR statistics"""
+    from datetime import datetime
+
+    df = datetime.strptime(date_from, "%Y-%m-%d").date() if date_from else None
+    dt = datetime.strptime(date_to, "%Y-%m-%d").date() if date_to else None
+
+    return get_dtr_statistics(db, df, dt)
+
+
+@app.get("/api/dtr/filter-options")
+async def get_dtr_filters(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "view"))
+):
+    """Get unique values for DTR filters"""
+    return get_dtr_filter_options(db)
+
+
+@app.get("/api/dtr/{dtr_id}")
+async def get_single_dtr(
+    dtr_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "view"))
+):
+    """Get single DTR record"""
+    dtr = get_dtr_by_id(db, dtr_id)
+    if not dtr:
+        raise HTTPException(status_code=404, detail="DTR record not found")
+
+    return {
+        "id": dtr.id,
+        "user_id": dtr.user_id,
+        "employee_name": dtr.user.full_name if dtr.user else None,
+        "employee_no": dtr.user.employee_no if dtr.user else None,
+        "campaign": dtr.user.campaign if dtr.user else None,
+        "date": dtr.date.isoformat() if dtr.date else None,
+        "scheduled_shift": dtr.scheduled_shift,
+        "time_in": dtr.time_in.strftime("%H:%M") if dtr.time_in else None,
+        "time_out": dtr.time_out.strftime("%H:%M") if dtr.time_out else None,
+        "break_in": dtr.break_in.strftime("%H:%M") if dtr.break_in else None,
+        "break_out": dtr.break_out.strftime("%H:%M") if dtr.break_out else None,
+        "total_hours": dtr.total_hours,
+        "overtime_hours": dtr.overtime_hours,
+        "status": dtr.status,
+        "remarks": dtr.remarks,
+        "is_manual_entry": dtr.is_manual_entry
+    }
+
+
+@app.post("/api/dtr")
+async def create_dtr(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "create"))
+):
+    """Create a new DTR record"""
+    from datetime import datetime
+
+    data = await request.json()
+
+    dtr_data = DTRCreate(
+        user_id=data["user_id"],
+        date=datetime.strptime(data["date"], "%Y-%m-%d").date(),
+        scheduled_shift=data.get("scheduled_shift"),
+        time_in=datetime.strptime(data["time_in"], "%H:%M").time() if data.get("time_in") else None,
+        time_out=datetime.strptime(data["time_out"], "%H:%M").time() if data.get("time_out") else None,
+        break_in=datetime.strptime(data["break_in"], "%H:%M").time() if data.get("break_in") else None,
+        break_out=datetime.strptime(data["break_out"], "%H:%M").time() if data.get("break_out") else None,
+        total_hours=data.get("total_hours"),
+        overtime_hours=data.get("overtime_hours"),
+        status=data.get("status", "Present"),
+        remarks=data.get("remarks"),
+        is_manual_entry=data.get("is_manual_entry", True)
+    )
+
+    dtr = create_dtr_record(db, dtr_data)
+    return {"status": "success", "id": dtr.id}
+
+
+@app.put("/api/dtr/{dtr_id}")
+async def update_dtr(
+    dtr_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "edit"))
+):
+    """Update a DTR record"""
+    from datetime import datetime
+
+    data = await request.json()
+
+    update_data = {}
+    if "scheduled_shift" in data:
+        update_data["scheduled_shift"] = data["scheduled_shift"]
+    if "time_in" in data:
+        update_data["time_in"] = datetime.strptime(data["time_in"], "%H:%M").time() if data["time_in"] else None
+    if "time_out" in data:
+        update_data["time_out"] = datetime.strptime(data["time_out"], "%H:%M").time() if data["time_out"] else None
+    if "break_in" in data:
+        update_data["break_in"] = datetime.strptime(data["break_in"], "%H:%M").time() if data["break_in"] else None
+    if "break_out" in data:
+        update_data["break_out"] = datetime.strptime(data["break_out"], "%H:%M").time() if data["break_out"] else None
+    if "total_hours" in data:
+        update_data["total_hours"] = data["total_hours"]
+    if "overtime_hours" in data:
+        update_data["overtime_hours"] = data["overtime_hours"]
+    if "status" in data:
+        update_data["status"] = data["status"]
+    if "remarks" in data:
+        update_data["remarks"] = data["remarks"]
+
+    dtr_update = DTRUpdate(**update_data)
+    dtr = update_dtr_record(db, dtr_id, dtr_update)
+
+    if not dtr:
+        raise HTTPException(status_code=404, detail="DTR record not found")
+
+    return {"status": "success"}
+
+
+@app.delete("/api/dtr/{dtr_id}")
+async def delete_dtr(
+    dtr_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "delete"))
+):
+    """Delete a DTR record"""
+    if not delete_dtr_record(db, dtr_id):
+        raise HTTPException(status_code=404, detail="DTR record not found")
+
+    return {"status": "success"}
+
+
+@app.post("/api/dtr/upload")
+async def upload_dtr(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "create"))
+):
+    """Bulk upload DTR records"""
+    from datetime import datetime
+
+    data = await request.json()
+    records = data.get("records", [])
+
+    dtr_records = []
+    for record in records:
+        dtr_data = DTRCreate(
+            user_id=record["user_id"],
+            date=datetime.strptime(record["date"], "%Y-%m-%d").date(),
+            scheduled_shift=record.get("scheduled_shift"),
+            time_in=datetime.strptime(record["time_in"], "%H:%M").time() if record.get("time_in") else None,
+            time_out=datetime.strptime(record["time_out"], "%H:%M").time() if record.get("time_out") else None,
+            break_in=datetime.strptime(record["break_in"], "%H:%M").time() if record.get("break_in") else None,
+            break_out=datetime.strptime(record["break_out"], "%H:%M").time() if record.get("break_out") else None,
+            total_hours=record.get("total_hours"),
+            overtime_hours=record.get("overtime_hours"),
+            status=record.get("status", "Present"),
+            remarks=record.get("remarks"),
+            is_manual_entry=record.get("is_manual_entry", False)
+        )
+        dtr_records.append(dtr_data)
+
+    count = bulk_create_dtr_records(db, dtr_records)
+    return {"status": "success", "created": count}
+
+
 # ============== Startup Events ==============
 
 @app.on_event("startup")
@@ -910,16 +1141,23 @@ async def startup_event():
         existing_employees = db.query(User).filter(User.employee_no != "E001").count()
         if existing_employees < 250:
             print("Seeding 250 employees...")
-            from seed_employees import seed_employees
+            from scripts.seed_employees import seed_employees
             seed_employees(db)
         else:
             print(f"Database already has {existing_employees} employees")
-        
+
         # Seed shift schedules if needed
         try:
-            from seed_schedules import seed_schedules
+            from scripts.seed_schedules import seed_schedules
             seed_schedules(db)
         except Exception as e:
             print(f"Note: Schedule seeding skipped or error occurred: {e}")
+
+        # Seed DTR records if needed
+        try:
+            from scripts.seed_dtr import seed_dtr
+            seed_dtr(db)
+        except Exception as e:
+            print(f"Note: DTR seeding skipped or error occurred: {e}")
     finally:
         db.close()

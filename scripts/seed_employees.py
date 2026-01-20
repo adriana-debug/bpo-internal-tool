@@ -92,8 +92,8 @@ SPECIAL_ROLES = {
 }
 
 def generate_email(first_name: str, last_name: str, employee_no: str) -> str:
-    """Generate a unique email address"""
-    return f"{first_name.lower()}.{last_name.lower()}@bpo-operations.com"
+    """Generate a unique email address using employee number"""
+    return f"{first_name.lower()}.{last_name.lower()}.{employee_no.lower()}@bpo-operations.com"
 
 def generate_phone() -> str:
     """Generate a random phone number"""
@@ -139,12 +139,12 @@ def seed_employees(db: Session):
     - 2 IT
     - 233 Operations (agent role)
     """
-    print("🌱 Starting employee seed process...")
+    print("Starting employee seed process...")
     
     # Check if employees already exist (exclude admin user E001)
     existing_count = db.query(User).filter(User.employee_no != "E001").count()
     if existing_count >= TOTAL_EMPLOYEES:
-        print(f"⚠️  Database already has {existing_count} employees. Skipping seed...")
+        print(f"Database already has {existing_count} employees. Skipping seed...")
         return
     
     # Initialize role quotas (track remaining assignments)
@@ -159,8 +159,8 @@ def seed_employees(db: Session):
     
     # Estimate total campaigns needed
     estimated_campaigns = (TOTAL_EMPLOYEES + 2) // 3  # Conservative estimate: 3 per campaign
-    print(f"📊 Planning to create {TOTAL_EMPLOYEES} employees across ~{estimated_campaigns}+ campaigns")
-    print(f"📋 Role distribution: {role_quotas}")
+    print(f"Planning to create {TOTAL_EMPLOYEES} employees across ~{estimated_campaigns}+ campaigns")
+    print(f"Role distribution: {role_quotas}")
     
     # Shuffle role assignments to distribute special roles randomly
     role_assignment_order = []
@@ -221,21 +221,22 @@ def seed_employees(db: Session):
                 
                 # Progress indicator every 50 employees
                 if total_created % 50 == 0:
-                    print(f"  ✓ Created {total_created}/{TOTAL_EMPLOYEES} employees across {campaign_num} campaigns")
+                    print(f"  Created {total_created}/{TOTAL_EMPLOYEES} employees across {campaign_num} campaigns")
                     print(f"    Role quotas remaining: {dict((k, v) for k, v in zip(role_assignment_order[total_created:], [1]*len(role_assignment_order[total_created:])))}")
         
         except Exception as e:
-            print(f"  ❌ Error creating employee {employee_no}: {str(e)}")
+            print(f"  Error creating employee {employee_no}: {str(e)}")
+            db.rollback()
             continue
     
     # Final commit
     db.commit()
     
-    print(f"\n✅ Successfully seeded {total_created} employees across {campaign_num} campaigns!")
-    print(f"📈 Total employees in database: {db.query(User).count()}")
+    print(f"\nSuccessfully seeded {total_created} employees across {campaign_num} campaigns!")
+    print(f"Total employees in database: {db.query(User).count()}")
     
     # Print campaign breakdown
-    print("\n📋 Campaign Distribution:")
+    print("\nCampaign Distribution:")
     campaigns = db.query(User.campaign, func.count(User.id)).filter(
         User.campaign.isnot(None),
         User.employee_no != "E001"  # Exclude admin
@@ -247,7 +248,7 @@ def seed_employees(db: Session):
     print(f"\n  Total campaigns: {len(campaigns)}")
     
     # Print role breakdown
-    print("\n👥 Role Distribution:")
+    print("\nRole Distribution:")
     roles_data = db.query(Role.name, func.count(User.id)).join(User).filter(
         User.employee_no != "E001"  # Exclude admin
     ).group_by(Role.name).order_by(Role.name).all()
@@ -256,7 +257,7 @@ def seed_employees(db: Session):
         print(f"  {role_name}: {count} employees")
     
     # Print status breakdown
-    print("\n📊 Status Distribution:")
+    print("\nStatus Distribution:")
     status_data = db.query(User.employee_status, func.count(User.id)).filter(
         User.employee_no != "E001"  # Exclude admin
     ).group_by(User.employee_status).order_by(User.employee_status).all()

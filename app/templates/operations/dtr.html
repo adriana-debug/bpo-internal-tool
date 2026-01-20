@@ -1,0 +1,832 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Time Record - BPO Internal Platform{% endblock %}
+
+{% block body %}
+<style>
+    #filtersPanel {
+        transition: all 0.3s ease-in-out;
+        max-height: 500px;
+    }
+
+    #filtersPanel.hidden {
+        max-height: 0;
+        overflow: hidden;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+    }
+
+    .status-present { background-color: #dcfce7; color: #166534; }
+    .status-late { background-color: #fef3c7; color: #92400e; }
+    .status-absent { background-color: #fee2e2; color: #991b1b; }
+    .status-incomplete { background-color: #fef9c3; color: #854d0e; }
+    .status-on-leave { background-color: #dbeafe; color: #1e40af; }
+    .status-rest-day { background-color: #f3f4f6; color: #4b5563; }
+
+    .overtime-indicator { background-color: #fce7f3; color: #9d174d; }
+</style>
+
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-0 z-40 h-screen w-64 bg-white dark:bg-dark border-r border-gray-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-200">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-4 py-5 border-b border-gray-100 dark:border-gray-700">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style="background: linear-gradient(135deg, var(--primary), var(--secondary));">
+                <iconify-icon icon="solar:buildings-3-bold-duotone" class="text-2xl text-white"></iconify-icon>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-sm font-bold text-gray-900 dark:text-white leading-tight">BPO Internal</span>
+                <span class="text-xs font-medium text-primary">Platform</span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="p-4 space-y-1 overflow-y-auto h-[calc(100vh-80px)]">
+            {% set categories = [
+                ('dashboard', 'Dashboard'),
+                ('operations', 'Operations'),
+                ('hr_people', 'HR & People'),
+                ('admin', 'Administration')
+            ] %}
+
+            {% for cat_key, cat_name in categories %}
+                {% set cat_modules = [] %}
+                {% for mod in modules %}
+                    {% if mod.category == cat_key %}
+                        {% set _ = cat_modules.append(mod) %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if cat_modules %}
+                    {% if cat_key != 'dashboard' %}
+                    <div class="pt-4">
+                        <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ cat_name }}</p>
+                    {% endif %}
+
+                    {% for mod in cat_modules %}
+                        <a href="{{ mod.route }}"
+                           class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                                  {% if current_route == mod.route %}
+                                  bg-primary/10 text-primary font-medium
+                                  {% else %}
+                                  text-gray-600 hover:bg-gray-100
+                                  {% endif %}">
+                            <iconify-icon icon="{{ mod.icon }}" class="text-xl"></iconify-icon>
+                            <span>{{ mod.display_name }}</span>
+                        </a>
+                    {% endfor %}
+
+                    {% if cat_key != 'dashboard' %}
+                    </div>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 lg:ml-64">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
+            <div class="flex items-center justify-between">
+                <button id="sidebarToggle" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                    <iconify-icon icon="solar:hamburger-menu-bold" class="text-xl text-gray-600"></iconify-icon>
+                </button>
+
+                <div class="hidden md:flex items-center flex-1 max-w-md mx-4">
+                    <div class="relative w-full">
+                        <iconify-icon icon="solar:magnifer-bold" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></iconify-icon>
+                        <input type="text" id="headerSearch" placeholder="Search DTR records..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div id="theme-container" class="flex items-center gap-2 bg-gray-100 dark:bg-dark rounded-full p-1">
+                        <div id="theme-selector" class="flex items-center gap-1"></div>
+                        <button id="dark-mode-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Toggle Dark Mode">
+                            <iconify-icon icon="solar:sun-bold" class="icon-sun text-lg text-gray-600 dark:text-gray-300"></iconify-icon>
+                            <iconify-icon icon="solar:moon-bold" class="icon-moon text-lg text-gray-600 dark:text-gray-300"></iconify-icon>
+                        </button>
+                    </div>
+
+                    <button class="relative p-2 rounded-lg hover:bg-gray-100">
+                        <iconify-icon icon="solar:bell-bold-duotone" class="text-xl text-gray-600"></iconify-icon>
+                        <span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+                    </button>
+
+                    <div class="relative" id="profileDropdown">
+                        <button class="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100" onclick="toggleDropdown()">
+                            <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <iconify-icon icon="solar:user-bold-duotone" class="text-primary"></iconify-icon>
+                            </div>
+                            <div class="hidden md:block text-left">
+                                <span class="text-sm font-medium text-gray-700 block">{{ user.full_name }}</span>
+                                <span class="text-xs text-gray-500">{{ user.role.display_name if user.role else 'No Role' }}</span>
+                            </div>
+                            <iconify-icon icon="solar:alt-arrow-down-bold" class="text-gray-400 hidden md:block"></iconify-icon>
+                        </button>
+                        <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-2">
+                            <div class="px-4 py-2 border-b border-gray-100">
+                                <p class="text-sm font-medium text-gray-900">{{ user.full_name }}</p>
+                                <p class="text-xs text-gray-500">{{ user.email }}</p>
+                            </div>
+                            <a href="/logout" class="flex items-center gap-2 px-4 py-2 text-sm text-error hover:bg-gray-50">
+                                <iconify-icon icon="solar:logout-2-bold-duotone"></iconify-icon>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="p-4 lg:p-6">
+            <div class="space-y-6">
+                <!-- Page Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                            <iconify-icon icon="solar:clock-circle-bold-duotone" class="text-2xl text-primary"></iconify-icon>
+                            Daily Time Record
+                        </h1>
+                        <p class="text-sm text-gray-600 mt-1">Track employee attendance, working hours, and overtime</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="exportDTR()" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                            <iconify-icon icon="solar:export-bold" class="text-lg"></iconify-icon>
+                            Export
+                        </button>
+                        <button onclick="showUploadModal()" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                            <iconify-icon icon="solar:import-bold" class="text-lg"></iconify-icon>
+                            Upload
+                        </button>
+                        <button onclick="showAddDTRModal()" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary border border-primary rounded-lg hover:bg-primary/90">
+                            <iconify-icon icon="solar:add-circle-bold" class="text-lg"></iconify-icon>
+                            Add Entry
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-sm transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Total Records</p>
+                                <p class="text-2xl font-bold text-gray-900" id="totalRecords">-</p>
+                                <p class="text-xs text-gray-500 mt-1">This period</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
+                                <iconify-icon icon="solar:document-text-bold-duotone" class="text-2xl text-blue-600"></iconify-icon>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-sm transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Present</p>
+                                <p class="text-2xl font-bold text-gray-900" id="presentCount">-</p>
+                                <p class="text-xs text-green-600 mt-1" id="presentPercentage">-% attendance</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center">
+                                <iconify-icon icon="solar:check-circle-bold-duotone" class="text-2xl text-green-600"></iconify-icon>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-sm transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Late Arrivals</p>
+                                <p class="text-2xl font-bold text-gray-900" id="lateCount">-</p>
+                                <p class="text-xs text-yellow-600 mt-1">This period</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-lg bg-yellow-50 flex items-center justify-center">
+                                <iconify-icon icon="solar:alarm-bold-duotone" class="text-2xl text-yellow-600"></iconify-icon>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-sm transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Total Overtime</p>
+                                <p class="text-2xl font-bold text-gray-900" id="totalOvertime">-</p>
+                                <p class="text-xs text-pink-600 mt-1">hours this period</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-lg bg-pink-50 flex items-center justify-center">
+                                <iconify-icon icon="solar:clock-bold-duotone" class="text-2xl text-pink-600"></iconify-icon>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters and Search -->
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <div class="flex items-end gap-3 mb-6">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                            <div class="relative">
+                                <iconify-icon icon="solar:magnifer-bold" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></iconify-icon>
+                                <input type="text" id="searchInput" placeholder="Search by employee name or ID..."
+                                       class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                            </div>
+                        </div>
+                        <button id="filterToggleBtn" onclick="toggleFiltersPanel()"
+                                class="px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 whitespace-nowrap">
+                            <iconify-icon icon="solar:filter-bold" class="text-lg"></iconify-icon>
+                            <span class="hidden sm:inline">Filters</span>
+                        </button>
+                    </div>
+
+                    <!-- Filters Panel -->
+                    <div id="filtersPanel" class="hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4 pb-4 border-b border-gray-200">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Campaign</label>
+                                <select id="campaignFilter" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    <option value="">All Campaigns</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Date From</label>
+                                <input type="date" id="dateFromFilter" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Date To</label>
+                                <input type="date" id="dateToFilter" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Shift</label>
+                                <select id="shiftFilter" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    <option value="">All Shifts</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                <select id="statusFilter" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    <option value="">All Statuses</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Late">Late</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Incomplete">Incomplete</option>
+                                    <option value="On Leave">On Leave</option>
+                                    <option value="Rest Day">Rest Day</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="resetFilters()" class="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 flex items-center gap-2">
+                                <iconify-icon icon="solar:refresh-bold" class="text-lg"></iconify-icon>
+                                Reset
+                            </button>
+                            <button onclick="applyFilters()" class="px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 flex items-center gap-2">
+                                <iconify-icon icon="solar:check-circle-bold" class="text-lg"></iconify-icon>
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DTR Table -->
+                <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900">Time Records</h3>
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm text-gray-600" id="recordCount">Showing 0 records</span>
+                                <div class="flex items-center gap-2">
+                                    <label for="pageSize" class="text-sm text-gray-600">Show:</label>
+                                    <select id="pageSize" onchange="changePageSize()" class="px-2 py-1 border border-gray-200 rounded text-sm">
+                                        <option value="25">25</option>
+                                        <option value="50" selected>50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled Shift</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time In</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Out</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Break In</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Break Out</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hrs</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OT</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dtrTableBody" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="11" class="px-6 py-12 text-center text-gray-500">
+                                        <iconify-icon icon="solar:refresh-bold" class="text-2xl animate-spin mx-auto mb-2"></iconify-icon>
+                                        <p>Loading records...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-600" id="paginationInfo">Showing 0 to 0 of 0 results</div>
+                            <div class="flex items-center gap-2" id="paginationControls"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add/Edit DTR Modal -->
+            <div id="dtrModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+                <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                    <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onclick="closeDTRModal()"></div>
+                    <div class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                        <form id="dtrForm" onsubmit="saveDTR(event)">
+                            <input type="hidden" id="dtrId">
+                            <div class="mb-4">
+                                <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Add DTR Entry</h3>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Employee *</label>
+                                    <select id="userId" required class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                        <option value="">Select Employee</option>
+                                    </select>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                                        <input type="date" id="dtrDate" required class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Scheduled Shift</label>
+                                        <input type="text" id="scheduledShift" placeholder="9am to 5pm" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Time In</label>
+                                        <input type="time" id="timeIn" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Time Out</label>
+                                        <input type="time" id="timeOut" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Break In</label>
+                                        <input type="time" id="breakIn" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Break Out</label>
+                                        <input type="time" id="breakOut" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Total Hours</label>
+                                        <input type="text" id="totalHours" placeholder="8.0" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Overtime</label>
+                                        <input type="text" id="overtimeHours" placeholder="0.0" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <select id="dtrStatus" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                            <option value="Present">Present</option>
+                                            <option value="Late">Late</option>
+                                            <option value="Absent">Absent</option>
+                                            <option value="Incomplete">Incomplete</option>
+                                            <option value="On Leave">On Leave</option>
+                                            <option value="Rest Day">Rest Day</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                                    <textarea id="remarks" rows="2" class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex gap-3">
+                                <button type="button" onclick="closeDTRModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+                                <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden" onclick="closeSidebar()"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State
+    let currentPage = 1;
+    let pageSize = 50;
+    let employees = [];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        loadFilterOptions();
+        loadDTRRecords();
+        loadEmployees();
+        setDefaultDates();
+
+        document.getElementById('searchInput').addEventListener('keyup', debounce(applyFilters, 300));
+        document.getElementById('headerSearch').addEventListener('keyup', (e) => {
+            document.getElementById('searchInput').value = e.target.value;
+            debounce(applyFilters, 300)();
+        });
+    });
+
+    function setDefaultDates() {
+        const today = new Date();
+        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, 1);
+        document.getElementById('dateFromFilter').value = threeMonthsAgo.toISOString().split('T')[0];
+        document.getElementById('dateToFilter').value = today.toISOString().split('T')[0];
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    async function loadFilterOptions() {
+        try {
+            const response = await fetch('/api/dtr/filter-options');
+            const data = await response.json();
+
+            const campaignSelect = document.getElementById('campaignFilter');
+            data.campaigns.forEach(c => {
+                campaignSelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            const shiftSelect = document.getElementById('shiftFilter');
+            data.shifts.forEach(s => {
+                shiftSelect.innerHTML += `<option value="${s}">${s}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading filter options:', error);
+        }
+    }
+
+    async function loadEmployees() {
+        try {
+            const response = await fetch('/api/employees?limit=500');
+            const data = await response.json();
+            employees = data.employees || [];
+
+            const userSelect = document.getElementById('userId');
+            employees.forEach(emp => {
+                userSelect.innerHTML += `<option value="${emp.id}">${emp.employee_no} - ${emp.full_name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading employees:', error);
+        }
+    }
+
+    async function loadDTRRecords() {
+        const search = document.getElementById('searchInput').value;
+        const campaign = document.getElementById('campaignFilter').value;
+        const dateFrom = document.getElementById('dateFromFilter').value;
+        const dateTo = document.getElementById('dateToFilter').value;
+        const shift = document.getElementById('shiftFilter').value;
+        const status = document.getElementById('statusFilter').value;
+
+        const params = new URLSearchParams({
+            page: currentPage,
+            limit: pageSize
+        });
+
+        if (search) params.append('search', search);
+        if (campaign) params.append('campaign', campaign);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        if (shift) params.append('shift', shift);
+        if (status) params.append('status', status);
+
+        try {
+            const response = await fetch(`/api/dtr?${params}`);
+            const data = await response.json();
+
+            renderTable(data.records);
+            renderPagination(data);
+            loadStatistics(dateFrom, dateTo);
+        } catch (error) {
+            console.error('Error loading DTR records:', error);
+        }
+    }
+
+    async function loadStatistics(dateFrom, dateTo) {
+        const params = new URLSearchParams();
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+
+        try {
+            const response = await fetch(`/api/dtr/statistics?${params}`);
+            const data = await response.json();
+
+            document.getElementById('totalRecords').textContent = data.total_records.toLocaleString();
+            document.getElementById('presentCount').textContent = data.present_count.toLocaleString();
+            document.getElementById('lateCount').textContent = data.late_count.toLocaleString();
+            document.getElementById('totalOvertime').textContent = data.total_overtime_hours.toFixed(1);
+
+            const attendanceRate = data.total_records > 0
+                ? ((data.present_count + data.late_count) / data.total_records * 100).toFixed(1)
+                : 0;
+            document.getElementById('presentPercentage').textContent = `${attendanceRate}% attendance`;
+        } catch (error) {
+            console.error('Error loading statistics:', error);
+        }
+    }
+
+    function renderTable(records) {
+        const tbody = document.getElementById('dtrTableBody');
+
+        if (!records || records.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="11" class="px-6 py-12 text-center text-gray-500">
+                        <iconify-icon icon="solar:document-text-bold-duotone" class="text-4xl mb-2"></iconify-icon>
+                        <p>No DTR records found</p>
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = records.map(record => {
+            const statusClass = getStatusClass(record.status);
+            const hasOvertime = record.overtime_hours && parseFloat(record.overtime_hours) > 0;
+
+            return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">${record.employee_name || '-'}</p>
+                            <p class="text-xs text-gray-500">${record.employee_no || ''} ${record.campaign ? '| ' + record.campaign : ''}</p>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${formatDate(record.date)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${record.scheduled_shift || '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${record.time_in || '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${record.time_out || '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${record.break_in || '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${record.break_out || '-'}</td>
+                    <td class="px-4 py-3 text-sm font-medium text-gray-900">${record.total_hours || '-'}</td>
+                    <td class="px-4 py-3">
+                        ${hasOvertime ? `<span class="px-2 py-1 text-xs font-medium rounded-full overtime-indicator">${record.overtime_hours}h</span>` : '-'}
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${record.status}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-1">
+                            <button onclick="editDTR(${record.id})" class="p-1 text-gray-400 hover:text-primary" title="Edit">
+                                <iconify-icon icon="solar:pen-bold" class="text-lg"></iconify-icon>
+                            </button>
+                            <button onclick="deleteDTR(${record.id})" class="p-1 text-gray-400 hover:text-error" title="Delete">
+                                <iconify-icon icon="solar:trash-bin-trash-bold" class="text-lg"></iconify-icon>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+    }
+
+    function getStatusClass(status) {
+        const classes = {
+            'Present': 'status-present',
+            'Late': 'status-late',
+            'Absent': 'status-absent',
+            'Incomplete': 'status-incomplete',
+            'On Leave': 'status-on-leave',
+            'Rest Day': 'status-rest-day'
+        };
+        return classes[status] || 'bg-gray-100 text-gray-700';
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function renderPagination(data) {
+        const info = document.getElementById('paginationInfo');
+        const controls = document.getElementById('paginationControls');
+        const recordCount = document.getElementById('recordCount');
+
+        const start = (data.page - 1) * data.limit + 1;
+        const end = Math.min(data.page * data.limit, data.total);
+
+        info.textContent = `Showing ${data.total > 0 ? start : 0} to ${end} of ${data.total} results`;
+        recordCount.textContent = `Showing ${data.total.toLocaleString()} records`;
+
+        let html = '';
+        if (data.page > 1) {
+            html += `<button onclick="goToPage(${data.page - 1})" class="px-3 py-1 text-sm border border-gray-200 rounded hover:bg-gray-50">Previous</button>`;
+        }
+
+        for (let i = Math.max(1, data.page - 2); i <= Math.min(data.pages, data.page + 2); i++) {
+            html += `<button onclick="goToPage(${i})" class="px-3 py-1 text-sm border rounded ${i === data.page ? 'bg-primary text-white border-primary' : 'border-gray-200 hover:bg-gray-50'}">${i}</button>`;
+        }
+
+        if (data.page < data.pages) {
+            html += `<button onclick="goToPage(${data.page + 1})" class="px-3 py-1 text-sm border border-gray-200 rounded hover:bg-gray-50">Next</button>`;
+        }
+
+        controls.innerHTML = html;
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        loadDTRRecords();
+    }
+
+    function changePageSize() {
+        pageSize = parseInt(document.getElementById('pageSize').value);
+        currentPage = 1;
+        loadDTRRecords();
+    }
+
+    function toggleFiltersPanel() {
+        document.getElementById('filtersPanel').classList.toggle('hidden');
+    }
+
+    function applyFilters() {
+        currentPage = 1;
+        loadDTRRecords();
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('campaignFilter').value = '';
+        document.getElementById('shiftFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        setDefaultDates();
+        applyFilters();
+    }
+
+    function showAddDTRModal() {
+        document.getElementById('modalTitle').textContent = 'Add DTR Entry';
+        document.getElementById('dtrForm').reset();
+        document.getElementById('dtrId').value = '';
+        document.getElementById('dtrModal').classList.remove('hidden');
+    }
+
+    function closeDTRModal() {
+        document.getElementById('dtrModal').classList.add('hidden');
+    }
+
+    async function editDTR(id) {
+        try {
+            const response = await fetch(`/api/dtr/${id}`);
+            const record = await response.json();
+
+            document.getElementById('modalTitle').textContent = 'Edit DTR Entry';
+            document.getElementById('dtrId').value = id;
+            document.getElementById('userId').value = record.user_id;
+            document.getElementById('dtrDate').value = record.date;
+            document.getElementById('scheduledShift').value = record.scheduled_shift || '';
+            document.getElementById('timeIn').value = record.time_in || '';
+            document.getElementById('timeOut').value = record.time_out || '';
+            document.getElementById('breakIn').value = record.break_in || '';
+            document.getElementById('breakOut').value = record.break_out || '';
+            document.getElementById('totalHours').value = record.total_hours || '';
+            document.getElementById('overtimeHours').value = record.overtime_hours || '';
+            document.getElementById('dtrStatus').value = record.status;
+            document.getElementById('remarks').value = record.remarks || '';
+
+            document.getElementById('dtrModal').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error loading DTR record:', error);
+            alert('Error loading record');
+        }
+    }
+
+    async function saveDTR(event) {
+        event.preventDefault();
+
+        const id = document.getElementById('dtrId').value;
+        const data = {
+            user_id: parseInt(document.getElementById('userId').value),
+            date: document.getElementById('dtrDate').value,
+            scheduled_shift: document.getElementById('scheduledShift').value || null,
+            time_in: document.getElementById('timeIn').value || null,
+            time_out: document.getElementById('timeOut').value || null,
+            break_in: document.getElementById('breakIn').value || null,
+            break_out: document.getElementById('breakOut').value || null,
+            total_hours: document.getElementById('totalHours').value || null,
+            overtime_hours: document.getElementById('overtimeHours').value || null,
+            status: document.getElementById('dtrStatus').value,
+            remarks: document.getElementById('remarks').value || null,
+            is_manual_entry: true
+        };
+
+        try {
+            const url = id ? `/api/dtr/${id}` : '/api/dtr';
+            const method = id ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                closeDTRModal();
+                loadDTRRecords();
+            } else {
+                const error = await response.json();
+                alert(error.detail || 'Error saving record');
+            }
+        } catch (error) {
+            console.error('Error saving DTR:', error);
+            alert('Error saving record');
+        }
+    }
+
+    async function deleteDTR(id) {
+        if (!confirm('Are you sure you want to delete this DTR record?')) return;
+
+        try {
+            const response = await fetch(`/api/dtr/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                loadDTRRecords();
+            } else {
+                alert('Error deleting record');
+            }
+        } catch (error) {
+            console.error('Error deleting DTR:', error);
+            alert('Error deleting record');
+        }
+    }
+
+    function exportDTR() {
+        alert('Export functionality coming soon');
+    }
+
+    function showUploadModal() {
+        alert('Upload functionality coming soon');
+    }
+
+    // Dropdown & Sidebar
+    function toggleDropdown() {
+        document.getElementById('dropdownMenu').classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('profileDropdown');
+        const menu = document.getElementById('dropdownMenu');
+        if (!dropdown.contains(e.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('sidebarToggle').addEventListener('click', function() {
+        document.getElementById('sidebar').classList.remove('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.remove('hidden');
+    });
+
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.add('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.add('hidden');
+    }
+</script>
+{% endblock %}

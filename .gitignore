@@ -33,19 +33,32 @@ ENV/
 *.sqlite
 *.sqlite3
 
-# Cookies and temp files
-cookies.txt
-newcookies.txt
-cookiestest.txt
-*cookies*.txt
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
 
 # OS files
 .DS_Store
 Thumbs.db
 nul
 
-# Data directory
+# Data directory (Docker volumes)
 data/
 
 # Claude/AI config
 .claude/
+
+# Session/Cookie files
+cookies.txt
+*cookies*.txt
+
+# Temporary files
+*.tmp
+*.temp
+*.bak

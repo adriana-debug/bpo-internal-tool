@@ -46,7 +46,7 @@ def seed_schedules(db: Session):
     - Random shift assignment per employee
     - No duplicates (checks existing schedules first)
     """
-    print("🌱 Starting shift schedule seed process...")
+    print("Starting shift schedule seed process...")
     
     # Get all active employees (excluding admin)
     active_employees = db.query(User).filter(
@@ -57,10 +57,10 @@ def seed_schedules(db: Session):
     ).all()
     
     if not active_employees:
-        print("⚠️  No active employees found. Skipping seed...")
+        print("No active employees found. Skipping seed...")
         return
     
-    print(f"📊 Found {len(active_employees)} active employees")
+    print(f"Found {len(active_employees)} active employees")
     
     # Get current week's Monday
     today = datetime.now()
@@ -78,7 +78,7 @@ def seed_schedules(db: Session):
             'day_name': day_names[i]
         })
     
-    print(f"📅 Creating schedules for week starting: {monday.date()}")
+    print(f"Creating schedules for week starting: {monday.date()}")
     
     schedules_created = 0
     schedules_skipped = 0
@@ -121,13 +121,13 @@ def seed_schedules(db: Session):
     # Commit all changes
     try:
         db.commit()
-        print(f"✅ Shift schedules created: {schedules_created}")
+        print(f"Shift schedules created: {schedules_created}")
         if schedules_skipped > 0:
-            print(f"⏭️  Schedules skipped (duplicates): {schedules_skipped}")
-        print(f"📝 Total records: {schedules_created + schedules_skipped}")
+            print(f"Schedules skipped (duplicates): {schedules_skipped}")
+        print(f"Total records: {schedules_created + schedules_skipped}")
     except Exception as e:
         db.rollback()
-        print(f"❌ Error creating schedules: {e}")
+        print(f"Error creating schedules: {e}")
         raise
 
 if __name__ == "__main__":
