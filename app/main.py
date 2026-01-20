@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Depends, Form, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
@@ -1106,6 +1106,92 @@ async def upload_dtr(
 
     count = bulk_create_dtr_records(db, dtr_records)
     return {"status": "success", "created": count}
+
+
+@app.get("/api/dtr/export")
+async def export_dtr_csv(
+    request: Request,
+    search: str = None,
+    campaign: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    shift: str = None,
+    status: str = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "view"))
+):
+    """Export DTR records to CSV"""
+    from datetime import datetime
+    import csv
+    import io
+
+    # Build filters (no pagination for export)
+    filters = DTRFilter(
+        search=search,
+        campaign=campaign,
+        date_from=datetime.strptime(date_from, "%Y-%m-%d").date() if date_from else None,
+        date_to=datetime.strptime(date_to, "%Y-%m-%d").date() if date_to else None,
+        shift=shift,
+        status=status,
+        page=1,
+        limit=100000  # Get all records
+    )
+
+    result = get_dtr_records(db, filters)
+    records = result["records"]
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow([
+        "Employee No",
+        "Employee Name",
+        "Campaign",
+        "Date",
+        "Scheduled Shift",
+        "Time In",
+        "Time Out",
+        "Break In",
+        "Break Out",
+        "Total Hours",
+        "Overtime Hours",
+        "Status",
+        "Remarks"
+    ])
+
+    # Write data rows
+    for record in records:
+        writer.writerow([
+            record["employee_no"],
+            record["employee_name"],
+            record["campaign"],
+            record["date"],
+            record["scheduled_shift"] or "",
+            record["time_in"] or "",
+            record["time_out"] or "",
+            record["break_in"] or "",
+            record["break_out"] or "",
+            record["total_hours"] or "",
+            record["overtime_hours"] or "",
+            record["status"],
+            record["remarks"] or ""
+        ])
+
+    output.seek(0)
+
+    # Generate filename with date range or current date
+    if date_from and date_to:
+        filename = f"dtr_export_{date_from}_to_{date_to}.csv"
+    else:
+        filename = f"dtr_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 # ============== Startup Events ==============

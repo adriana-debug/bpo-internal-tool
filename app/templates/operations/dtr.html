@@ -799,7 +799,25 @@
     }
 
     function exportDTR() {
-        alert('Export functionality coming soon');
+        // Build query params from current filters
+        const params = new URLSearchParams();
+
+        const search = document.getElementById('headerSearch').value;
+        const campaign = document.getElementById('campaignFilter').value;
+        const dateFrom = document.getElementById('dateFrom').value;
+        const dateTo = document.getElementById('dateTo').value;
+        const shift = document.getElementById('shiftFilter').value;
+        const status = document.getElementById('statusFilter').value;
+
+        if (search) params.append('search', search);
+        if (campaign) params.append('campaign', campaign);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        if (shift) params.append('shift', shift);
+        if (status) params.append('status', status);
+
+        // Trigger download
+        window.location.href = `/api/dtr/export?${params.toString()}`;
     }
 
     function showUploadModal() {
