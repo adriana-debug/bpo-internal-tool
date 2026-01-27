@@ -6,7 +6,7 @@ session = requests.Session()
 
 # Login
 login_response = session.post(
-    'http://127.0.0.1:8001/login',
+    'http://127.0.0.1:8005/login',
     data={'email': 'admin@bpo.com', 'password': 'admin123'},
     allow_redirects=False
 )
@@ -15,7 +15,7 @@ print(f"Cookies after login: {session.cookies.get_dict()}")
 
 # Test filter-options
 try:
-    response = session.get('http://127.0.0.1:8001/api/employees/filter-options')
+    response = session.get('http://127.0.0.1:8005/api/employees/filter-options')
     print(f"\nFilter options status: {response.status_code}")
     print(f"Response: {response.text[:500]}")
 except Exception as e:
@@ -23,7 +23,7 @@ except Exception as e:
 
 # Test statistics (which works)
 try:
-    response = session.get('http://127.0.0.1:8001/api/employees/statistics')
+    response = session.get('http://127.0.0.1:8005/api/employees/statistics')
     print(f"\nStatistics status: {response.status_code}")
     print(f"Response: {response.text[:500]}")
 except Exception as e:

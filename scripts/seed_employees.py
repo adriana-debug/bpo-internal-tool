@@ -140,54 +140,49 @@ def seed_employees(db: Session):
     - 233 Operations (agent role)
     """
     print("Starting employee seed process...")
-    
     # Check if employees already exist (exclude admin user E001)
     existing_count = db.query(User).filter(User.employee_no != "E001").count()
-    if existing_count >= TOTAL_EMPLOYEES:
+    if existing_count >= 35:
         print(f"Database already has {existing_count} employees. Skipping seed...")
         return
-    
-    # Initialize role quotas (track remaining assignments)
-    role_quotas = ROLE_QUOTAS.copy()
-    
-    # Track created employees
-    employee_num = 1000
-    total_created = 0
-    campaign_num = 1
-    employees_in_current_campaign = 0
-    current_campaign_name = f"Campaign {campaign_num:02d}"
-    
-    # Estimate total campaigns needed
-    estimated_campaigns = (TOTAL_EMPLOYEES + 2) // 3  # Conservative estimate: 3 per campaign
-    print(f"Planning to create {TOTAL_EMPLOYEES} employees across ~{estimated_campaigns}+ campaigns")
-    print(f"Role distribution: {role_quotas}")
-    
-    # Shuffle role assignments to distribute special roles randomly
-    role_assignment_order = []
-    for role_name, quota in role_quotas.items():
-        for _ in range(quota):
-            role_assignment_order.append(role_name)
-    random.shuffle(role_assignment_order)
-    
-    # Create employees
-    for role_assignment_index in range(TOTAL_EMPLOYEES):
-        first_name = random.choice(FIRST_NAMES)
-        last_name = random.choice(LAST_NAMES)
+
+    # Hardcoded campaign and status distribution
+    seed_data = [
+        # Campaign 1: 1 Active, 2 Inactive
+        ("Campaign 1", "Active"), ("Campaign 1", "Inactive"), ("Campaign 1", "Inactive"),
+        # Campaign 2: 2 Active
+        ("Campaign 2", "Active"), ("Campaign 2", "Active"),
+        # Campaign 3: 2 Active
+        ("Campaign 3", "Active"), ("Campaign 3", "Active"),
+        # Campaign 4: 2 Active
+        ("Campaign 4", "Active"), ("Campaign 4", "Active"),
+        # Campaign 5: 2 Active
+        ("Campaign 5", "Active"), ("Campaign 5", "Active"),
+        # Campaign 6: 4 Active
+        ("Campaign 6", "Active"), ("Campaign 6", "Active"), ("Campaign 6", "Active"), ("Campaign 6", "Active"),
+        # Campaign 7: 6 Active
+        ("Campaign 7", "Active"), ("Campaign 7", "Active"), ("Campaign 7", "Active"), ("Campaign 7", "Active"), ("Campaign 7", "Active"), ("Campaign 7", "Active"),
+        # Campaign 8: 2 Active
+        ("Campaign 8", "Active"), ("Campaign 8", "Active"),
+        # Campaign 9: 8 Inactive, 1 Transfer
+        ("Campaign 9", "Inactive"), ("Campaign 9", "Inactive"), ("Campaign 9", "Inactive"), ("Campaign 9", "Inactive"), ("Campaign 9", "Inactive"), ("Campaign 9", "Inactive"), ("Campaign 9", "Inactive"), ("Campaign 9", "Inactive"), ("Campaign 9", "Transfer"),
+        # Campaign 10: 1 Active
+        ("Campaign 10", "Active"),
+        # Campaign 11: 1 Active, 1 Inactive
+        ("Campaign 11", "Active"), ("Campaign 11", "Inactive"),
+    ]
+
+    # Use a fixed set of names for uniqueness
+    names = [(f"Test{i+1}", f"User{i+1}") for i in range(35)]
+    departments = DEPARTMENTS * ((35 // len(DEPARTMENTS)) + 1)
+    today = date.today()
+    employee_num = 1001
+    for idx, ((campaign, status), (first_name, last_name), department) in enumerate(zip(seed_data, names, departments)):
         employee_no = f"E{employee_num:05d}"
         email = generate_email(first_name, last_name, employee_no)
-        
-        # Get the role to assign (from our shuffled order)
-        assigned_role_name = role_assignment_order[role_assignment_index]
-        role = get_role_by_name(assigned_role_name, db)
-        
-        # Generate other attributes
-        status = random.choices(EMPLOYEE_STATUSES, weights=[60, 10, 5, 5, 10, 10])[0]
-        date_of_joining = generate_date_of_joining()
-        department = random.choice(DEPARTMENTS)
-        
-        # Calculate tenure
-        tenure_months = (date.today().year - date_of_joining.year) * 12 + (date.today().month - date_of_joining.month)
-        
+        role = get_role_by_name("agent", db)
+        date_of_joining = today - timedelta(days=30 + idx)
+        tenure_months = (today.year - date_of_joining.year) * 12 + (today.month - date_of_joining.month)
         try:
             employee = User(
                 employee_no=employee_no,
@@ -195,8 +190,8 @@ def seed_employees(db: Session):
                 hashed_password=get_password_hash(f"password{employee_num}"),
                 full_name=f"{first_name} {last_name}",
                 role_id=role.id if role else None,
-                campaign=current_campaign_name,
-                department=department,  # Randomly assigned department
+                campaign=campaign,
+                department=department,
                 phone_no=generate_phone(),
                 personal_email=f"personal.{employee_no}@gmail.com",
                 client_email=f"{employee_no}@client.bpo.com",
@@ -204,64 +199,32 @@ def seed_employees(db: Session):
                 tenure_months=tenure_months,
                 employee_status=status,
                 is_active=(status == "Active"),
-                assessment_due_date=date.today() + timedelta(days=random.randint(30, 180)),
+                assessment_due_date=today + timedelta(days=60 + idx),
                 regularization_date=date_of_joining + timedelta(days=180)
             )
             db.add(employee)
             employee_num += 1
-            total_created += 1
-            employees_in_current_campaign += 1
-            
-            # Move to next campaign when current has 2-3 employees
-            if employees_in_current_campaign >= random.randint(2, 3):
-                db.commit()
-                campaign_num += 1
-                current_campaign_name = f"Campaign {campaign_num:02d}"
-                employees_in_current_campaign = 0
-                
-                # Progress indicator every 50 employees
-                if total_created % 50 == 0:
-                    print(f"  Created {total_created}/{TOTAL_EMPLOYEES} employees across {campaign_num} campaigns")
-                    print(f"    Role quotas remaining: {dict((k, v) for k, v in zip(role_assignment_order[total_created:], [1]*len(role_assignment_order[total_created:])))}")
-        
         except Exception as e:
             print(f"  Error creating employee {employee_no}: {str(e)}")
             db.rollback()
             continue
-    
-    # Final commit
     db.commit()
-    
-    print(f"\nSuccessfully seeded {total_created} employees across {campaign_num} campaigns!")
+    print(f"\nSuccessfully seeded 35 employees across 11 campaigns!")
     print(f"Total employees in database: {db.query(User).count()}")
-    
     # Print campaign breakdown
     print("\nCampaign Distribution:")
     campaigns = db.query(User.campaign, func.count(User.id)).filter(
         User.campaign.isnot(None),
         User.employee_no != "E001"  # Exclude admin
     ).group_by(User.campaign).order_by(User.campaign).all()
-    
     for campaign_name, count in campaigns:
         print(f"  {campaign_name}: {count} employees")
-    
     print(f"\n  Total campaigns: {len(campaigns)}")
-    
-    # Print role breakdown
-    print("\nRole Distribution:")
-    roles_data = db.query(Role.name, func.count(User.id)).join(User).filter(
-        User.employee_no != "E001"  # Exclude admin
-    ).group_by(Role.name).order_by(Role.name).all()
-    
-    for role_name, count in roles_data:
-        print(f"  {role_name}: {count} employees")
-    
     # Print status breakdown
     print("\nStatus Distribution:")
     status_data = db.query(User.employee_status, func.count(User.id)).filter(
         User.employee_no != "E001"  # Exclude admin
     ).group_by(User.employee_status).order_by(User.employee_status).all()
-    
     for status, count in status_data:
         print(f"  {status}: {count} employees")
 

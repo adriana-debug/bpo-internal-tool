@@ -1,6 +1,6 @@
 import requests
 
-base_url = "http://127.0.0.1:8001"
+base_url = "http://127.0.0.1:8005"
 session = requests.Session()
 
 def test_user_management_fix():

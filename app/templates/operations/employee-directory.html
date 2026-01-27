@@ -175,55 +175,59 @@
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-sm transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Total Employees</p>
-                    <p class="text-2xl font-bold text-gray-900" id="totalEmployees">-</p>
-                    <p class="text-xs text-gray-500 mt-1">All workforce</p>
+        <!-- Total Employees -->
+        <div class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 kpi-card">
+            <div class="flex items-center justify-between mb-4">
+                <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Employees</p>
+                <div class="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-lg">
+                    <iconify-icon icon="solar:users-group-rounded-line-duotone" class="text-xl text-primary"></iconify-icon>
                 </div>
-                <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <iconify-icon icon="solar:users-group-rounded-bold-duotone" class="text-2xl text-blue-600"></iconify-icon>
-                </div>
+            </div>
+            <div>
+                <p class="text-3xl font-bold text-gray-800" id="totalEmployees">-</p>
+                <p class="text-xs text-gray-500 mt-1">All workforce</p>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-sm transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Active Employees</p>
-                    <p class="text-2xl font-bold text-gray-900" id="activeEmployees">-</p>
-                    <p class="text-xs text-green-600 mt-1" id="activePercentage">-% active rate</p>
+        <!-- Active Employees -->
+        <div class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 kpi-card">
+            <div class="flex items-center justify-between mb-4">
+                <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Active Employees</p>
+                <div class="w-10 h-10 flex items-center justify-center bg-success/10 rounded-lg">
+                    <iconify-icon icon="solar:check-circle-line-duotone" class="text-xl text-success"></iconify-icon>
                 </div>
-                <div class="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center">
-                    <iconify-icon icon="solar:check-circle-bold-duotone" class="text-2xl text-green-600"></iconify-icon>
-                </div>
+            </div>
+            <div>
+                <p class="text-3xl font-bold text-gray-800" id="activeEmployees">-</p>
+                <p class="text-xs text-green-600 mt-1" id="activePercentage">-% active rate</p>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-sm transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">New Hires</p>
-                    <p class="text-2xl font-bold text-gray-900" id="newHires">-</p>
-                    <p class="text-xs text-blue-600 mt-1">(30 days)</p>
+        <!-- New Hires -->
+        <div class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 kpi-card">
+            <div class="flex items-center justify-between mb-4">
+                <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">New Hires</p>
+                <div class="w-10 h-10 flex items-center justify-center bg-info/10 rounded-lg">
+                    <iconify-icon icon="solar:user-plus-line-duotone" class="text-xl text-info"></iconify-icon>
                 </div>
-                <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <iconify-icon icon="solar:user-plus-rounded-bold-duotone" class="text-2xl text-blue-600"></iconify-icon>
-                </div>
+            </div>
+            <div>
+                <p class="text-3xl font-bold text-gray-800" id="newHires">-</p>
+                <p class="text-xs text-blue-600 mt-1">(30 days)</p>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-sm transition-shadow">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-medium text-gray-600 uppercase tracking-wide mb-1">Departments</p>
-                    <p class="text-2xl font-bold text-gray-900" id="totalDepartments">-</p>
-                    <p class="text-xs text-gray-500 mt-1">Active units</p>
+        <!-- Departments -->
+        <div class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 kpi-card">
+            <div class="flex items-center justify-between mb-4">
+                <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Departments</p>
+                <div class="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-lg">
+                    <iconify-icon icon="solar:buildings-2-line-duotone" class="text-xl text-primary"></iconify-icon>
                 </div>
-                <div class="w-12 h-12 rounded-lg bg-purple-50 flex items-center justify-center">
-                    <iconify-icon icon="solar:buildings-2-bold-duotone" class="text-2xl text-purple-600"></iconify-icon>
-                </div>
+            </div>
+            <div>
+                <p class="text-3xl font-bold text-gray-800" id="totalDepartments">-</p>
+                <p class="text-xs text-gray-500 mt-1">Active units</p>
             </div>
         </div>
     </div>

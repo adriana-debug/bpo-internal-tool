@@ -8,7 +8,7 @@ if __name__ == "__main__":
     print("Starting FastAPI dev server on port 8005...")
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8005"],
-        cwd="/Users/adria/Desktop/bpm-internal-tool-v2"
+        cwd=r"C:\Users\adria\Desktop\Development\bpm-internal-tool-v2"
     )
     
     # Give it time to start

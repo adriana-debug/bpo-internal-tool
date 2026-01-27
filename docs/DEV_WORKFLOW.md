@@ -110,19 +110,87 @@ app/
 │   └── security.py         # JWT, password hashing
 ├── models/
 │   ├── user.py             # User, ShiftSchedule models
-│   └── rbac.py             # Role, Module, Permission models
+│   ├── rbac.py             # Role, Module, Permission models
+│   └── requests.py         # Requests model (NEW)
 ├── schemas/
 │   ├── auth.py             # Login schemas
 │   ├── employee.py         # Employee CRUD schemas
 │   ├── shift_schedule.py   # Schedule schemas
-│   └── dtr.py              # DTR schemas
+│   ├── dtr.py              # DTR schemas
+│   └── requests.py         # Requests schemas (NEW)
 └── services/
     ├── auth_service.py     # Authentication logic
     ├── employee_service.py # Employee CRUD operations
     ├── rbac_service.py     # Role/permission management
     ├── shift_schedule_service.py
-    └── dtr_service.py      # DTR operations
+    ├── dtr_service.py      # DTR operations
+    └── requests_service.py # Requests logic (NEW)
 ```
+### Requests Feature (NEW)
+
+#### Adding a Request
+1. **Model:** Define in `app/models/requests.py` (see example below)
+2. **Schema:** Add Pydantic schemas in `app/schemas/requests.py`
+3. **Service:** Implement CRUD logic in `app/services/requests_service.py`
+4. **API & Page Route:** Add endpoints and page in `app/main.py`
+5. **Template:** Create `app/templates/operations/requests.html`
+
+**Example SQLAlchemy Model:**
+```python
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
+from app.core.database import Base
+from datetime import datetime
+
+class Request(Base):
+    __tablename__ = "requests"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    type = Column(String(50), nullable=False)
+    status = Column(String(20), default="pending")
+    details = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+```
+
+**Example Pydantic Schema:**
+```python
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
+class RequestCreate(BaseModel):
+    type: str
+    details: Optional[str] = None
+
+class RequestOut(BaseModel):
+    id: int
+    user_id: int
+    type: str
+    status: str
+    details: Optional[str]
+    created_at: datetime
+    class Config:
+        orm_mode = True
+```
+
+**API Endpoints:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET    | `/api/requests` | List requests |
+| POST   | `/api/requests` | Create request |
+| GET    | `/api/requests/{id}` | Get request |
+| PUT    | `/api/requests/{id}` | Update request |
+| DELETE | `/api/requests/{id}` | Delete request |
+
+**Page Route:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET    | `/operations/requests` | Requests page view |
+
+**Template:**
+Create `app/templates/operations/requests.html` extending `base.html` and listing requests.
+
+**Testing:**
+Add tests in `tests/test_requests.py` for API and page.
 
 ### Adding a New Page Route
 
@@ -192,8 +260,27 @@ This checks:
 - `id`, `employee_no`, `email`, `hashed_password`, `full_name`
 - `role_id`, `campaign`, `department`
 - `date_of_joining`, `last_working_date`, `tenure_months`
-- `employee_status` (Active/Inactive/Terminated/On Leave/Probation/New Hire/Resignation Pending)
+- `employee_status` (Active/Inactive/Transfer)
 - `is_active`, `created_at`, `updated_at`
+
+#### Seeded Employee Campaign Distribution (Sample Data)
+
+| Campaign    | Active | Inactive | Transfer | Total |
+|-------------|--------|----------|----------|-------|
+| Campaign 1  |   1    |    2     |    0     |   3   |
+| Campaign 2  |   2    |    0     |    0     |   2   |
+| Campaign 3  |   2    |    0     |    0     |   2   |
+| Campaign 4  |   2    |    0     |    0     |   2   |
+| Campaign 5  |   2    |    0     |    0     |   2   |
+| Campaign 6  |   4    |    0     |    0     |   4   |
+| Campaign 7  |   6    |    0     |    0     |   6   |
+| Campaign 8  |   2    |    0     |    0     |   2   |
+| Campaign 9  |   0    |    8     |    1     |   9   |
+| Campaign 10 |   1    |    0     |    0     |   1   |
+| Campaign 11 |   1    |    1     |    0     |   2   |
+| **Total**   | **23** | **11**   | **1**    | **35**|
+
+Each seeded employee is unique and realistic. The admin user (E001) is unchanged.
 
 **ShiftSchedule** (`app/models/user.py`):
 - `id`, `user_id`, `schedule_date`, `day_of_week`

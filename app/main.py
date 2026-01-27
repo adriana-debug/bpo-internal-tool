@@ -3,13 +3,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from app.core.database import engine, get_db, Base
 from app.core.config import settings
 from app.core.security import create_access_token, decode_token
-from app.models.user import User, DailyTimeRecord
+from app.models.user import User, ShiftSchedule, DailyTimeRecord
 from app.models.rbac import Role, Module, RoleModulePermission, UserModulePermission
+from app.models.pay_dispute import PayDispute, PayDisputeComment
+from app.models.ir_nte_log import IRNTELog
 from app.services.auth_service import authenticate_user, create_user, get_user_by_email
 from app.services.rbac_service import (
     seed_roles_and_modules,
@@ -43,6 +45,29 @@ from app.services.dtr_service import (
     get_filter_options as get_dtr_filter_options,
     bulk_create_dtr_records
 )
+from app.schemas.pay_dispute import PayDisputeCreate, PayDisputeUpdate, PayDisputeFilter, PayDisputeCommentCreate
+from app.services.pay_dispute_service import (
+    get_pay_disputes,
+    get_pay_dispute_by_id,
+    create_pay_dispute,
+    update_pay_dispute,
+    delete_pay_dispute,
+    get_pay_dispute_statistics,
+    get_filter_options as get_pay_dispute_filter_options,
+    add_comment as add_pay_dispute_comment,
+    get_comments as get_pay_dispute_comments
+)
+from app.schemas.ir_nte_log import IRNTELogCreate, IRNTELogUpdate, IRNTELogFilter
+from app.services.shift_schedule_service import ShiftScheduleService
+from app.services.ir_nte_service import (
+    get_ir_nte_logs,
+    get_ir_nte_by_id,
+    create_ir_nte_log,
+    update_ir_nte_log,
+    delete_ir_nte_log,
+    get_ir_nte_statistics,
+    get_filter_options as get_ir_nte_filter_options
+)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -54,6 +79,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User | None:
+    print("DEBUG: get_current_user called")
     token = request.cookies.get("access_token")
     if not token:
         return None
@@ -75,7 +101,9 @@ def require_auth(request: Request, db: Session = Depends(get_db)) -> User:
 
 def require_permission(module: str, action: str = "view"):
     """Dependency factory for checking permissions"""
+    print(f"DEBUG: require_permission factory called for {module}:{action}")
     def check(request: Request, db: Session = Depends(get_db)):
+        print(f"DEBUG: require_permission check called for {module}:{action}")
         user = get_current_user(request, db)
         if not user:
             raise HTTPException(status_code=401, detail="Not authenticated")
@@ -209,6 +237,31 @@ async def role_management(
 
 
 # ============== Operations Routes ==============
+from app.models.requests import Request as RequestModel
+from app.schemas.requests import RequestCreate, RequestOut
+from app.services.requests_service import (
+    get_requests,
+    get_request,
+    create_request,
+    update_request,
+    delete_request
+)
+
+@app.get("/operations/requests", response_class=HTMLResponse)
+async def requests_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("requests", "view"))
+):
+    modules = get_accessible_modules(db, user)
+    requests_list = get_requests(db)
+    return templates.TemplateResponse("operations/requests.html", {
+        "request": request,
+        "user": user,
+        "modules": modules,
+        "requests": requests_list,
+        "current_route": "/operations/requests"
+    })
 
 @app.get("/operations/employee-directory", response_class=HTMLResponse)
 async def employee_directory(
@@ -225,18 +278,18 @@ async def employee_directory(
     })
 
 
-@app.get("/operations/shift-schedule", response_class=HTMLResponse)
-async def shift_schedule(
+@app.get("/operations/schedule", response_class=HTMLResponse)
+async def schedule(
     request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(require_permission("schedule", "view"))
 ):
     modules = get_accessible_modules(db, user)
-    return templates.TemplateResponse("operations/shift-schedule.html", {
+    return templates.TemplateResponse("operations/schedule.html", {
         "request": request,
         "user": user,
         "modules": modules,
-        "current_route": "/operations/shift-schedule"
+        "current_route": "/operations/schedule"
     })
 
 
@@ -255,7 +308,89 @@ async def daily_time_record(
     })
 
 
+@app.get("/operations/pay-disputes", response_class=HTMLResponse)
+async def pay_disputes_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "view"))
+):
+    modules = get_accessible_modules(db, user)
+    return templates.TemplateResponse("operations/pay-disputes.html", {
+        "request": request,
+        "user": user,
+        "modules": modules,
+        "current_route": "/operations/pay-disputes"
+    })
+
+
+@app.get("/operations/ir-nte-logs", response_class=HTMLResponse)
+async def ir_nte_logs_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "view"))
+):
+    modules = get_accessible_modules(db, user)
+    return templates.TemplateResponse("operations/ir-nte-logs.html", {
+        "request": request,
+        "user": user,
+        "modules": modules,
+        "current_route": "/operations/ir-nte-logs"
+    })
+
+
 # ============== API Endpoints ==============
+
+# Requests API
+from fastapi import Body
+
+@app.get("/api/requests", response_model=list[RequestOut])
+async def api_get_requests(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("requests", "view"))
+):
+    return get_requests(db)
+
+@app.post("/api/requests", response_model=RequestOut)
+async def api_create_request(
+    request_in: RequestCreate = Body(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("requests", "create"))
+):
+    return create_request(db, user.id, request_in)
+
+@app.get("/api/requests/{request_id}", response_model=RequestOut)
+async def api_get_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("requests", "view"))
+):
+    req = get_request(db, request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return req
+
+@app.put("/api/requests/{request_id}", response_model=RequestOut)
+async def api_update_request(
+    request_id: int,
+    data: dict = Body(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("requests", "edit"))
+):
+    req = update_request(db, request_id, data)
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return req
+
+@app.delete("/api/requests/{request_id}")
+async def api_delete_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("requests", "delete"))
+):
+    ok = delete_request(db, request_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return {"status": "success"}
 
 @app.get("/api/users/{user_id}")
 async def get_user(
@@ -778,9 +913,6 @@ async def get_shift_schedule(
     current_user: User = Depends(require_permission("schedule", "view"))
 ):
     """Get weekly shift schedule with filters"""
-    from app.services.shift_schedule_service import ShiftScheduleService
-    from datetime import datetime, timedelta
-    
     try:
         # Parse week date (should be Monday of the week)
         if week:
@@ -789,7 +921,7 @@ async def get_shift_schedule(
             # Default to current week's Monday
             today = datetime.now()
             week_start = today - timedelta(days=today.weekday())
-        
+
         # Get schedules
         schedules = ShiftScheduleService.get_weekly_schedule(
             db=db,
@@ -798,15 +930,165 @@ async def get_shift_schedule(
             campaign=campaign,
             shift=shift
         )
-        
+
         return {
             "status": "success",
             "week_start": week_start.date(),
             "schedules": schedules
         }
     except Exception as e:
-        print(f"Error loading schedule: {e}")
+        import traceback
+        import os
+        error_msg = f"Error loading schedule: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        # Log to a file we can definitely read
+        with open("app_error.log", "a") as f:
+            f.write(f"\n--- API Error at {datetime.now()} ---\n")
+            f.write(error_msg)
         raise HTTPException(status_code=500, detail=f"Error loading schedule: {str(e)}")
+
+
+@app.get("/api/shift-schedule/statistics")
+async def get_shift_schedule_statistics(
+    week: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("schedule", "view"))
+):
+    """Get shift schedule statistics"""
+    try:
+        if week:
+            week_start = datetime.fromisoformat(week)
+        else:
+            today = datetime.now()
+            week_start = today - timedelta(days=today.weekday())
+
+        return ShiftScheduleService.get_schedule_statistics(db, week_start)
+    except Exception as e:
+        print(f"Error loading statistics: {e}")
+        raise HTTPException(status_code=500, detail=f"Error loading statistics: {str(e)}")
+
+
+@app.get("/api/shift-schedule/filter-options")
+async def get_shift_schedule_filter_options(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("schedule", "view"))
+):
+    """Get filter options for shift schedule"""
+    from app.services.shift_schedule_service import ShiftScheduleService
+
+    return ShiftScheduleService.get_filter_options(db)
+
+
+@app.get("/api/shift-schedule/export")
+async def export_shift_schedule_csv(
+    week: str = None,
+    search: str = None,
+    campaign: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("schedule", "view"))
+):
+    """Export shift schedules to CSV"""
+    from app.services.shift_schedule_service import ShiftScheduleService
+    from datetime import datetime, timedelta
+    import csv
+    import io
+
+    try:
+        if week:
+            week_start = datetime.fromisoformat(week)
+        else:
+            today = datetime.now()
+            week_start = today - timedelta(days=today.weekday())
+
+        schedules = ShiftScheduleService.get_schedules_for_export(
+            db=db,
+            week_start_date=week_start,
+            search=search,
+            campaign=campaign
+        )
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write header
+        writer.writerow([
+            "Employee No",
+            "Employee Name",
+            "Campaign",
+            "Date",
+            "Day of Week",
+            "Shift Time",
+            "Published",
+            "Notes"
+        ])
+
+        # Write data
+        for schedule in schedules:
+            writer.writerow([
+                schedule["employee_no"],
+                schedule["employee_name"],
+                schedule["campaign"],
+                schedule["date"],
+                schedule["day_of_week"],
+                schedule["shift_time"],
+                schedule["is_published"],
+                schedule["notes"]
+            ])
+
+        output.seek(0)
+        week_str = week_start.strftime('%Y-%m-%d')
+        filename = f"shift_schedule_{week_str}.csv"
+
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        print(f"Error exporting schedule: {e}")
+        raise HTTPException(status_code=500, detail=f"Error exporting schedule: {str(e)}")
+
+
+@app.get("/api/shift-schedule/{schedule_id}")
+async def get_single_shift_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("schedule", "view"))
+):
+    """Get a single shift schedule by ID"""
+    from app.services.shift_schedule_service import ShiftScheduleService
+
+    schedule = ShiftScheduleService.get_schedule_by_id(db, schedule_id)
+    if not schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    return {
+        "id": schedule.id,
+        "user_id": schedule.user_id,
+        "employee_name": schedule.user.full_name if schedule.user else None,
+        "employee_no": schedule.user.employee_no if schedule.user else None,
+        "campaign": schedule.campaign or (schedule.user.campaign if schedule.user else None),
+        "schedule_date": schedule.schedule_date.isoformat() if schedule.schedule_date else None,
+        "day_of_week": schedule.day_of_week,
+        "shift_time": schedule.shift_time,
+        "is_published": schedule.is_published,
+        "notes": schedule.notes
+    }
+
+
+@app.delete("/api/shift-schedule/{schedule_id}")
+async def delete_shift_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("schedule", "delete"))
+):
+    """Delete a shift schedule"""
+    from app.services.shift_schedule_service import ShiftScheduleService
+
+    if not ShiftScheduleService.delete_schedule(db, schedule_id):
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    return {"status": "success", "message": "Schedule deleted successfully"}
 
 
 @app.post("/api/shift-schedule/save")
@@ -959,6 +1241,92 @@ async def get_dtr_filters(
     return get_dtr_filter_options(db)
 
 
+@app.get("/api/dtr/export")
+async def export_dtr_csv(
+    request: Request,
+    search: str = None,
+    campaign: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    shift: str = None,
+    status: str = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("dtr", "view"))
+):
+    """Export DTR records to CSV"""
+    from datetime import datetime
+    import csv
+    import io
+
+    # Build filters (no pagination for export)
+    filters = DTRFilter(
+        search=search,
+        campaign=campaign,
+        date_from=datetime.strptime(date_from, "%Y-%m-%d").date() if date_from else None,
+        date_to=datetime.strptime(date_to, "%Y-%m-%d").date() if date_to else None,
+        shift=shift,
+        status=status,
+        page=1,
+        limit=100000  # Get all records
+    )
+
+    result = get_dtr_records(db, filters)
+    records = result["records"]
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow([
+        "Employee No",
+        "Employee Name",
+        "Campaign",
+        "Date",
+        "Scheduled Shift",
+        "Time In",
+        "Time Out",
+        "Break In",
+        "Break Out",
+        "Total Hours",
+        "Overtime Hours",
+        "Status",
+        "Remarks"
+    ])
+
+    # Write data rows
+    for record in records:
+        writer.writerow([
+            record["employee_no"],
+            record["employee_name"],
+            record["campaign"],
+            record["date"],
+            record["scheduled_shift"] or "",
+            record["time_in"] or "",
+            record["time_out"] or "",
+            record["break_in"] or "",
+            record["break_out"] or "",
+            record["total_hours"] or "",
+            record["overtime_hours"] or "",
+            record["status"],
+            record["remarks"] or ""
+        ])
+
+    output.seek(0)
+
+    # Generate filename with date range or current date
+    if date_from and date_to:
+        filename = f"dtr_export_{date_from}_to_{date_to}.csv"
+    else:
+        filename = f"dtr_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
 @app.get("/api/dtr/{dtr_id}")
 async def get_single_dtr(
     dtr_id: int,
@@ -1108,90 +1476,504 @@ async def upload_dtr(
     return {"status": "success", "created": count}
 
 
-@app.get("/api/dtr/export")
-async def export_dtr_csv(
+# ============== Pay Dispute API Endpoints ==============
+
+@app.get("/api/pay-disputes")
+async def get_pay_disputes_list(
     request: Request,
     search: str = None,
+    status: str = None,
+    dispute_type: str = None,
+    priority: str = None,
+    campaign: str = None,
+    assigned_to: int = None,
+    date_from: str = None,
+    date_to: str = None,
+    page: int = 1,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "view"))
+):
+    """Get pay disputes with filtering and pagination"""
+    from datetime import datetime
+
+    filters = PayDisputeFilter(
+        search=search,
+        status=status,
+        dispute_type=dispute_type,
+        priority=priority,
+        campaign=campaign,
+        assigned_to=assigned_to,
+        date_from=datetime.strptime(date_from, "%Y-%m-%d").date() if date_from else None,
+        date_to=datetime.strptime(date_to, "%Y-%m-%d").date() if date_to else None,
+        page=page,
+        limit=limit
+    )
+
+    return get_pay_disputes(db, filters)
+
+
+@app.get("/api/pay-disputes/statistics")
+async def get_pay_disputes_stats(
+    date_from: str = None,
+    date_to: str = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "view"))
+):
+    """Get pay dispute statistics"""
+    from datetime import datetime
+
+    df = datetime.strptime(date_from, "%Y-%m-%d").date() if date_from else None
+    dt = datetime.strptime(date_to, "%Y-%m-%d").date() if date_to else None
+
+    return get_pay_dispute_statistics(db, df, dt)
+
+
+@app.get("/api/pay-disputes/filter-options")
+async def get_pay_disputes_filters(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "view"))
+):
+    """Get unique values for pay dispute filters"""
+    return get_pay_dispute_filter_options(db)
+
+
+@app.get("/api/pay-disputes/export")
+async def export_pay_disputes_csv(
+    request: Request,
+    search: str = None,
+    status: str = None,
+    dispute_type: str = None,
+    priority: str = None,
     campaign: str = None,
     date_from: str = None,
     date_to: str = None,
-    shift: str = None,
-    status: str = None,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("dtr", "view"))
+    user: User = Depends(require_permission("pay_disputes", "view"))
 ):
-    """Export DTR records to CSV"""
+    """Export pay disputes to CSV"""
     from datetime import datetime
     import csv
     import io
 
-    # Build filters (no pagination for export)
-    filters = DTRFilter(
+    filters = PayDisputeFilter(
         search=search,
+        status=status,
+        dispute_type=dispute_type,
+        priority=priority,
         campaign=campaign,
         date_from=datetime.strptime(date_from, "%Y-%m-%d").date() if date_from else None,
         date_to=datetime.strptime(date_to, "%Y-%m-%d").date() if date_to else None,
-        shift=shift,
-        status=status,
         page=1,
-        limit=100000  # Get all records
+        limit=100000
     )
 
-    result = get_dtr_records(db, filters)
-    records = result["records"]
+    result = get_pay_disputes(db, filters)
+    disputes = result["disputes"]
 
-    # Create CSV in memory
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # Write header
     writer.writerow([
-        "Employee No",
-        "Employee Name",
-        "Campaign",
-        "Date",
-        "Scheduled Shift",
-        "Time In",
-        "Time Out",
-        "Break In",
-        "Break Out",
-        "Total Hours",
-        "Overtime Hours",
-        "Status",
-        "Remarks"
+        "Ticket No", "Employee No", "Employee Name", "Campaign",
+        "Dispute Type", "Pay Period", "Disputed Amount", "Subject",
+        "Status", "Priority", "Assigned To", "Resolution Amount",
+        "Resolved Date", "Created Date"
     ])
 
-    # Write data rows
-    for record in records:
+    for d in disputes:
         writer.writerow([
-            record["employee_no"],
-            record["employee_name"],
-            record["campaign"],
-            record["date"],
-            record["scheduled_shift"] or "",
-            record["time_in"] or "",
-            record["time_out"] or "",
-            record["break_in"] or "",
-            record["break_out"] or "",
-            record["total_hours"] or "",
-            record["overtime_hours"] or "",
-            record["status"],
-            record["remarks"] or ""
+            d["ticket_no"],
+            d["employee_no"],
+            d["employee_name"],
+            d["campaign"],
+            d["dispute_type"],
+            d["pay_period"],
+            d["disputed_amount"] or "",
+            d["subject"],
+            d["status"],
+            d["priority"],
+            d["assignee_name"] or "",
+            d["resolution_amount"] or "",
+            d["resolved_date"] or "",
+            d["created_at"][:10] if d["created_at"] else ""
         ])
 
     output.seek(0)
-
-    # Generate filename with date range or current date
-    if date_from and date_to:
-        filename = f"dtr_export_{date_from}_to_{date_to}.csv"
-    else:
-        filename = f"dtr_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
+    filename = f"pay_disputes_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
 
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@app.get("/api/pay-disputes/{dispute_id}")
+async def get_single_pay_dispute(
+    dispute_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "view"))
+):
+    """Get single pay dispute"""
+    dispute = get_pay_dispute_by_id(db, dispute_id)
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Pay dispute not found")
+
+    return {
+        "id": dispute.id,
+        "ticket_no": dispute.ticket_no,
+        "employee_id": dispute.employee_id,
+        "employee_name": dispute.employee.full_name if dispute.employee else None,
+        "employee_no": dispute.employee.employee_no if dispute.employee else None,
+        "campaign": dispute.employee.campaign if dispute.employee else None,
+        "dispute_type": dispute.dispute_type,
+        "pay_period": dispute.pay_period,
+        "disputed_amount": dispute.disputed_amount,
+        "subject": dispute.subject,
+        "description": dispute.description,
+        "supporting_docs": dispute.supporting_docs,
+        "status": dispute.status,
+        "priority": dispute.priority,
+        "assigned_to": dispute.assigned_to,
+        "assignee_name": dispute.assignee.full_name if dispute.assignee else None,
+        "resolution_notes": dispute.resolution_notes,
+        "resolution_amount": dispute.resolution_amount,
+        "resolved_date": dispute.resolved_date.isoformat() if dispute.resolved_date else None,
+        "created_by": dispute.created_by,
+        "creator_name": dispute.creator.full_name if dispute.creator else None,
+        "created_at": dispute.created_at.isoformat() if dispute.created_at else None,
+        "updated_at": dispute.updated_at.isoformat() if dispute.updated_at else None
+    }
+
+
+@app.post("/api/pay-disputes")
+async def create_new_pay_dispute(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "create"))
+):
+    """Create a new pay dispute"""
+    data = await request.json()
+
+    dispute_data = PayDisputeCreate(
+        employee_id=data["employee_id"],
+        dispute_type=data["dispute_type"],
+        pay_period=data["pay_period"],
+        disputed_amount=data.get("disputed_amount"),
+        subject=data["subject"],
+        description=data["description"],
+        supporting_docs=data.get("supporting_docs"),
+        priority=data.get("priority", "Medium")
+    )
+
+    dispute = create_pay_dispute(db, dispute_data, user.id)
+    return {"status": "success", "id": dispute.id, "ticket_no": dispute.ticket_no}
+
+
+@app.put("/api/pay-disputes/{dispute_id}")
+async def update_pay_dispute_record(
+    dispute_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "edit"))
+):
+    """Update a pay dispute"""
+    from datetime import datetime
+
+    data = await request.json()
+
+    # Parse resolved_date if present
+    if data.get("resolved_date"):
+        data["resolved_date"] = datetime.strptime(data["resolved_date"], "%Y-%m-%d").date()
+
+    update_data = PayDisputeUpdate(**data)
+    dispute = update_pay_dispute(db, dispute_id, update_data)
+
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Pay dispute not found")
+
+    return {"status": "success"}
+
+
+@app.delete("/api/pay-disputes/{dispute_id}")
+async def delete_pay_dispute_record(
+    dispute_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "delete"))
+):
+    """Delete a pay dispute"""
+    if not delete_pay_dispute(db, dispute_id):
+        raise HTTPException(status_code=404, detail="Pay dispute not found")
+
+    return {"status": "success"}
+
+
+@app.get("/api/pay-disputes/{dispute_id}/comments")
+async def get_dispute_comments(
+    dispute_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "view"))
+):
+    """Get comments for a pay dispute"""
+    dispute = get_pay_dispute_by_id(db, dispute_id)
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Pay dispute not found")
+
+    comments = get_pay_dispute_comments(db, dispute_id, include_internal=True)
+    return {"comments": comments}
+
+
+@app.post("/api/pay-disputes/{dispute_id}/comments")
+async def add_dispute_comment(
+    dispute_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("pay_disputes", "edit"))
+):
+    """Add a comment to a pay dispute"""
+    dispute = get_pay_dispute_by_id(db, dispute_id)
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Pay dispute not found")
+
+    data = await request.json()
+    comment_data = PayDisputeCommentCreate(
+        comment=data["comment"],
+        is_internal=data.get("is_internal", False)
+    )
+
+    comment = add_pay_dispute_comment(db, dispute_id, user.id, comment_data)
+    return {"status": "success", "id": comment.id}
+
+
+# ============== IR/NTE Log API Endpoints ==============
+
+@app.get("/api/ir-nte-logs")
+async def get_ir_nte_logs_list(
+    request: Request,
+    search: str = None,
+    doc_type: str = None,
+    status: str = None,
+    campaign: str = None,
+    filed_date_from: str = None,
+    filed_date_to: str = None,
+    nte_date_from: str = None,
+    nte_date_to: str = None,
+    has_explanation: bool = None,
+    page: int = 1,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "view"))
+):
+    """Get IR/NTE logs with filtering and pagination"""
+    from datetime import datetime
+
+    filters = IRNTELogFilter(
+        search=search,
+        doc_type=doc_type,
+        status=status,
+        campaign=campaign,
+        filed_date_from=datetime.strptime(filed_date_from, "%Y-%m-%d").date() if filed_date_from else None,
+        filed_date_to=datetime.strptime(filed_date_to, "%Y-%m-%d").date() if filed_date_to else None,
+        nte_date_from=datetime.strptime(nte_date_from, "%Y-%m-%d").date() if nte_date_from else None,
+        nte_date_to=datetime.strptime(nte_date_to, "%Y-%m-%d").date() if nte_date_to else None,
+        has_explanation=has_explanation,
+        page=page,
+        limit=limit
+    )
+
+    return get_ir_nte_logs(db, filters)
+
+
+@app.get("/api/ir-nte-logs/statistics")
+async def get_ir_nte_stats(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "view"))
+):
+    """Get IR/NTE log statistics"""
+    return get_ir_nte_statistics(db)
+
+
+@app.get("/api/ir-nte-logs/filter-options")
+async def get_ir_nte_filters(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "view"))
+):
+    """Get unique values for IR/NTE log filters"""
+    return get_ir_nte_filter_options(db)
+
+
+@app.get("/api/ir-nte-logs/export")
+async def export_ir_nte_logs_csv(
+    request: Request,
+    search: str = None,
+    doc_type: str = None,
+    status: str = None,
+    campaign: str = None,
+    filed_date_from: str = None,
+    filed_date_to: str = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "view"))
+):
+    """Export IR/NTE logs to CSV"""
+    from datetime import datetime
+    import csv
+    import io
+
+    filters = IRNTELogFilter(
+        search=search,
+        doc_type=doc_type,
+        status=status,
+        campaign=campaign,
+        filed_date_from=datetime.strptime(filed_date_from, "%Y-%m-%d").date() if filed_date_from else None,
+        filed_date_to=datetime.strptime(filed_date_to, "%Y-%m-%d").date() if filed_date_to else None,
+        page=1,
+        limit=100000
+    )
+
+    result = get_ir_nte_logs(db, filters)
+    logs = result["logs"]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Doc ID", "Type", "Employee No", "Employee Name", "Campaign",
+        "Filed Date", "Complaint/Violation", "Received Date", "NTE Date",
+        "Has Explanation", "Status", "Resolution", "Remarks"
+    ])
+
+    for log in logs:
+        writer.writerow([
+            log["doc_id"],
+            log["doc_type"],
+            log["employee_no"],
+            log["employee_name"],
+            log["campaign"],
+            log["filed_date"],
+            log["complaint_violation"],
+            log["received_date"] or "",
+            log["nte_date"] or "",
+            "Yes" if log["has_explanation"] else "No",
+            log["status"],
+            log["resolution"] or "",
+            log["remarks"] or ""
+        ])
+
+    output.seek(0)
+    filename = f"ir_nte_logs_export_{datetime.now().strftime('%Y-%m-%d')}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@app.get("/api/ir-nte-logs/{log_id}")
+async def get_single_ir_nte_log(
+    log_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "view"))
+):
+    """Get single IR/NTE log"""
+    log = get_ir_nte_by_id(db, log_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="IR/NTE log not found")
+
+    return {
+        "id": log.id,
+        "doc_id": log.doc_id,
+        "doc_type": log.doc_type,
+        "employee_id": log.employee_id,
+        "employee_name": log.employee.full_name if log.employee else None,
+        "employee_no": log.employee.employee_no if log.employee else None,
+        "campaign": log.employee.campaign if log.employee else None,
+        "filed_date": log.filed_date.isoformat() if log.filed_date else None,
+        "complaint_violation": log.complaint_violation,
+        "received_date": log.received_date.isoformat() if log.received_date else None,
+        "nte_date": log.nte_date.isoformat() if log.nte_date else None,
+        "has_explanation": log.has_explanation,
+        "explanation_date": log.explanation_date.isoformat() if log.explanation_date else None,
+        "explanation_summary": log.explanation_summary,
+        "attachment_path": log.attachment_path,
+        "nte_form_path": log.nte_form_path,
+        "status": log.status,
+        "resolution": log.resolution,
+        "resolution_date": log.resolution_date.isoformat() if log.resolution_date else None,
+        "remarks": log.remarks,
+        "created_by": log.created_by,
+        "creator_name": log.creator.full_name if log.creator else None,
+        "created_at": log.created_at.isoformat() if log.created_at else None,
+        "updated_at": log.updated_at.isoformat() if log.updated_at else None
+    }
+
+
+@app.post("/api/ir-nte-logs")
+async def create_new_ir_nte_log(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "create"))
+):
+    """Create a new IR/NTE log"""
+    from datetime import datetime
+
+    data = await request.json()
+
+    log_data = IRNTELogCreate(
+        employee_id=data["employee_id"],
+        doc_type=data["doc_type"],
+        filed_date=datetime.strptime(data["filed_date"], "%Y-%m-%d").date(),
+        complaint_violation=data["complaint_violation"],
+        received_date=datetime.strptime(data["received_date"], "%Y-%m-%d").date() if data.get("received_date") else None,
+        nte_date=datetime.strptime(data["nte_date"], "%Y-%m-%d").date() if data.get("nte_date") else None,
+        attachment_path=data.get("attachment_path"),
+        nte_form_path=data.get("nte_form_path"),
+        remarks=data.get("remarks")
+    )
+
+    log = create_ir_nte_log(db, log_data, user.id)
+    return {"status": "success", "id": log.id, "doc_id": log.doc_id}
+
+
+@app.put("/api/ir-nte-logs/{log_id}")
+async def update_ir_nte_log_record(
+    log_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "edit"))
+):
+    """Update an IR/NTE log"""
+    from datetime import datetime
+
+    data = await request.json()
+
+    # Parse date fields if present
+    date_fields = ["filed_date", "received_date", "nte_date", "explanation_date", "resolution_date"]
+    for field in date_fields:
+        if data.get(field):
+            data[field] = datetime.strptime(data[field], "%Y-%m-%d").date()
+
+    update_data = IRNTELogUpdate(**data)
+    log = update_ir_nte_log(db, log_id, update_data)
+
+    if not log:
+        raise HTTPException(status_code=404, detail="IR/NTE log not found")
+
+    return {"status": "success"}
+
+
+@app.delete("/api/ir-nte-logs/{log_id}")
+async def delete_ir_nte_log_record(
+    log_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_permission("ir_nte_logs", "delete"))
+):
+    """Delete an IR/NTE log"""
+    if not delete_ir_nte_log(db, log_id):
+        raise HTTPException(status_code=404, detail="IR/NTE log not found")
+
+    return {"status": "success"}
 
 
 # ============== Startup Events ==============
@@ -1245,5 +2027,12 @@ async def startup_event():
             seed_dtr(db)
         except Exception as e:
             print(f"Note: DTR seeding skipped or error occurred: {e}")
+
+        # Seed pay disputes if needed
+        try:
+            from scripts.seed_pay_disputes import seed_pay_disputes
+            seed_pay_disputes(db)
+        except Exception as e:
+            print(f"Note: Pay disputes seeding skipped or error occurred: {e}")
     finally:
         db.close()

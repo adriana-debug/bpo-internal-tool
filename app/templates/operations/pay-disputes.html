@@ -1,0 +1,1065 @@
+{% extends "base.html" %}
+
+{% block title %}Pay Disputes - BPO Internal Platform{% endblock %}
+
+{% block body %}
+<style>
+    /* Enterprise B2B Form Controls - Clean, minimal styling */
+    .form-input {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #374151;
+        background-color: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 5px;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .form-input:focus {
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.15);
+    }
+
+    .form-input::placeholder {
+        color: #9ca3af;
+    }
+
+    /* Modern search input - subtle, accessible focus */
+    .search-input {
+        width: 100%;
+        padding: 10px 14px 10px 38px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #374151;
+        background-color: #f9fafb;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+
+    .search-input::placeholder {
+        color: #9ca3af;
+    }
+
+    .search-input:hover {
+        background-color: #f3f4f6;
+    }
+
+    .search-input:focus {
+        background-color: #fff;
+        border-color: #cbd5e1;
+        box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.1), 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .search-wrapper {
+        position: relative;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        pointer-events: none;
+        transition: color 0.15s ease;
+    }
+
+    .search-wrapper:focus-within .search-icon {
+        color: #64748b;
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #374151;
+        background-color: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 5px;
+        outline: none;
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .form-select:focus {
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.15);
+    }
+
+    .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .form-textarea {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #374151;
+        background-color: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 5px;
+        outline: none;
+        resize: vertical;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .form-textarea:focus {
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.15);
+    }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+    .btn-primary {
+        background-color: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+    }
+
+    .btn-primary:hover {
+        background-color: #1d4ed8;
+    }
+
+    .btn-secondary {
+        background-color: #fff;
+        color: #374151;
+        border-color: #d1d5db;
+    }
+
+    .btn-secondary:hover {
+        background-color: #f9fafb;
+    }
+
+    /* Status badges */
+    .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        font-size: 12px;
+        font-weight: 500;
+        border-radius: 3px;
+    }
+
+    .badge-open {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-under-review {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-pending-payroll {
+        background-color: #e0e7ff;
+        color: #3730a3;
+    }
+
+    .badge-resolved {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-rejected {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-escalated {
+        background-color: #fce7f3;
+        color: #9d174d;
+    }
+
+    .badge-low {
+        background-color: #f3f4f6;
+        color: #4b5563;
+    }
+
+    .badge-medium {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-high {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-urgent {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* Card styling */
+    .card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+    }
+
+    .card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 15px;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    /* Table styling */
+    .data-table {
+        width: 100%;
+        font-size: 14px;
+    }
+
+    .data-table thead {
+        background-color: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .data-table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .data-table td {
+        padding: 12px 16px;
+        color: #374151;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .data-table tbody tr:hover {
+        background-color: #f9fafb;
+    }
+
+    /* KPI cards */
+    .kpi-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 16px;
+    }
+
+    .kpi-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1;
+    }
+
+    .kpi-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 50;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #fff;
+        border-radius: 6px;
+        width: 100%;
+        max-width: 640px;
+        max-height: 90vh;
+        overflow-y: auto;
+        margin: 16px;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modal-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    /* Filters panel */
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        padding: 16px;
+    }
+
+    @media (max-width: 1024px) {
+        .filters-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .filters-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* Action icons */
+    .action-btn {
+        padding: 4px;
+        border-radius: 3px;
+        color: #6b7280;
+        cursor: pointer;
+    }
+
+    .action-btn:hover {
+        background-color: #f3f4f6;
+        color: #374151;
+    }
+
+    .action-btn.danger:hover {
+        color: #dc2626;
+    }
+
+    /* Pagination */
+    .pagination-btn {
+        padding: 4px 10px;
+        font-size: 13px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        background: #fff;
+        color: #374151;
+        cursor: pointer;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        background: #f9fafb;
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+
+<div class="flex min-h-screen bg-gray-50">
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed left-0 top-0 z-40 h-screen w-60 bg-white border-r border-gray-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-200">
+        <div class="flex items-center gap-3 px-4 py-4 border-b border-gray-200">
+            <div class="w-8 h-8 rounded-md flex items-center justify-center"
+                style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
+                <iconify-icon icon="solar:buildings-3-bold-duotone" class="text-lg text-white"></iconify-icon>
+            </div>
+            <div>
+                <span class="text-sm font-semibold text-gray-900">BPO Internal</span>
+            </div>
+        </div>
+
+        <nav class="p-3 space-y-1 overflow-y-auto h-[calc(100vh-64px)]">
+            {% set categories = [
+            ('dashboard', 'Dashboard'),
+            ('operations', 'Operations'),
+            ('hr_people', 'HR & People'),
+            ('admin', 'Administration')
+            ] %}
+
+            {% for cat_key, cat_name in categories %}
+            {% set cat_modules = [] %}
+            {% for mod in modules %}
+            {% if mod.category == cat_key %}
+            {% set _ = cat_modules.append(mod) %}
+            {% endif %}
+            {% endfor %}
+
+            {% if cat_modules %}
+            {% if cat_key != 'dashboard' %}
+            <div class="pt-3">
+                <p class="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{{ cat_name }}</p>
+                {% endif %}
+
+                {% for mod in cat_modules %}
+                <a href="{{ mod.route }}" class="flex items-center gap-2 px-3 py-2 rounded text-sm
+                                  {% if current_route == mod.route %}
+                                  bg-blue-50 text-blue-700 font-medium
+                                  {% else %}
+                                  text-gray-600 hover:bg-gray-50
+                                  {% endif %}">
+                    <iconify-icon icon="{{ mod.icon }}" class="text-base"></iconify-icon>
+                    <span>{{ mod.display_name }}</span>
+                </a>
+                {% endfor %}
+
+                {% if cat_key != 'dashboard' %}
+            </div>
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 lg:ml-60">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3">
+            <div class="flex items-center justify-between">
+                <button id="sidebarToggle" class="lg:hidden p-1.5 rounded hover:bg-gray-100">
+                    <iconify-icon icon="solar:hamburger-menu-bold" class="text-lg text-gray-600"></iconify-icon>
+                </button>
+
+                <div class="hidden md:flex items-center flex-1 max-w-sm mx-4">
+                    <div class="search-wrapper w-full">
+                        <iconify-icon icon="solar:magnifer-linear" class="search-icon text-sm"></iconify-icon>
+                        <input type="text" id="headerSearch" placeholder="Search disputes..." class="search-input">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div class="relative" id="profileDropdown">
+                        <button class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50"
+                            onclick="toggleDropdown()">
+                            <div class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
+                                <iconify-icon icon="solar:user-bold" class="text-gray-500 text-sm"></iconify-icon>
+                            </div>
+                            <span class="text-sm text-gray-700 hidden md:block">{{ user.full_name }}</span>
+                        </button>
+                        <div id="dropdownMenu"
+                            class="hidden absolute right-0 mt-1 w-44 bg-white rounded border border-gray-200 shadow-sm py-1">
+                            <div class="px-3 py-2 border-b border-gray-100">
+                                <p class="text-sm font-medium text-gray-900">{{ user.full_name }}</p>
+                                <p class="text-xs text-gray-500">{{ user.email }}</p>
+                            </div>
+                            <a href="/logout"
+                                class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-gray-50">
+                                <iconify-icon icon="solar:logout-2-linear"></iconify-icon>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="p-4 lg:p-5">
+            <div class="space-y-4">
+                <!-- Page Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h1 class="text-lg font-semibold text-gray-900">Pay Disputes</h1>
+                        <p class="text-sm text-gray-500">Track and manage employee pay-related complaints</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportDisputes()" class="btn btn-secondary">
+                            <iconify-icon icon="solar:export-linear" class="text-base"></iconify-icon>
+                            Export
+                        </button>
+                        <button onclick="showAddDisputeModal()" class="btn btn-primary">
+                            <iconify-icon icon="solar:add-circle-linear" class="text-base"></iconify-icon>
+                            New Dispute
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="kpi-card">
+                        <p class="kpi-label mb-2">Total Disputes</p>
+                        <p class="kpi-value" id="totalDisputes">-</p>
+                    </div>
+                    <div class="kpi-card">
+                        <p class="kpi-label mb-2">Open</p>
+                        <p class="kpi-value text-blue-600" id="openCount">-</p>
+                    </div>
+                    <div class="kpi-card">
+                        <p class="kpi-label mb-2">Under Review</p>
+                        <p class="kpi-value text-amber-600" id="underReviewCount">-</p>
+                    </div>
+                    <div class="kpi-card">
+                        <p class="kpi-label mb-2">Resolved</p>
+                        <p class="kpi-value text-green-600" id="resolvedCount">-</p>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="card">
+                    <div class="card-header flex items-center justify-between">
+                        <span>Filters</span>
+                        <button onclick="clearFilters()" class="text-xs text-blue-600 hover:underline">Clear
+                            all</button>
+                    </div>
+                    <div class="filters-grid">
+                        <div>
+                            <label class="form-label">Status</label>
+                            <select id="statusFilter" class="form-select">
+                                <option value="">All</option>
+                                <option value="Open">Open</option>
+                                <option value="Under Review">Under Review</option>
+                                <option value="Pending Payroll">Pending Payroll</option>
+                                <option value="Resolved">Resolved</option>
+                                <option value="Rejected">Rejected</option>
+                                <option value="Escalated">Escalated</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Type</label>
+                            <select id="disputeTypeFilter" class="form-select">
+                                <option value="">All</option>
+                                <option value="Overtime">Overtime</option>
+                                <option value="Deduction">Deduction</option>
+                                <option value="Bonus">Bonus</option>
+                                <option value="Allowance">Allowance</option>
+                                <option value="Tax">Tax</option>
+                                <option value="Others">Others</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Priority</label>
+                            <select id="priorityFilter" class="form-select">
+                                <option value="">All</option>
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                                <option value="Urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Campaign</label>
+                            <select id="campaignFilter" class="form-select">
+                                <option value="">All</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">From</label>
+                            <input type="date" id="dateFromFilter" class="form-input">
+                        </div>
+                        <div>
+                            <label class="form-label">To</label>
+                            <input type="date" id="dateToFilter" class="form-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="card overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Ticket #</th>
+                                    <th>Employee</th>
+                                    <th>Type</th>
+                                    <th>Pay Period</th>
+                                    <th>Amount</th>
+                                    <th>Subject</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="disputesTableBody">
+                                <tr>
+                                    <td colspan="10" class="text-center py-8 text-gray-500">
+                                        <iconify-icon icon="solar:loading-bold"
+                                            class="text-2xl animate-spin text-gray-400"></iconify-icon>
+                                        <p class="mt-2 text-sm">Loading...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+                        <span class="text-xs text-gray-600">
+                            Showing <span id="showingFrom">0</span>-<span id="showingTo">0</span> of <span
+                                id="totalRecords">0</span>
+                        </span>
+                        <div class="flex items-center gap-1">
+                            <button onclick="previousPage()" id="prevBtn" disabled class="pagination-btn">Prev</button>
+                            <span id="pageInfo" class="text-xs text-gray-600 px-2">1 / 1</span>
+                            <button onclick="nextPage()" id="nextBtn" disabled class="pagination-btn">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="disputeModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="modalTitle" class="modal-title">New Pay Dispute</span>
+            <button onclick="closeModal()" class="action-btn">
+                <iconify-icon icon="solar:close-circle-linear" class="text-lg"></iconify-icon>
+            </button>
+        </div>
+        <form id="disputeForm" onsubmit="saveDispute(event)" class="modal-body space-y-4">
+            <input type="hidden" id="disputeId">
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="form-label">Employee *</label>
+                    <select id="employeeId" required class="form-select">
+                        <option value="">Select Employee</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Dispute Type *</label>
+                    <select id="disputeType" required class="form-select">
+                        <option value="">Select Type</option>
+                        <option value="Overtime">Overtime</option>
+                        <option value="Deduction">Deduction</option>
+                        <option value="Bonus">Bonus</option>
+                        <option value="Allowance">Allowance</option>
+                        <option value="Tax">Tax</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="form-label">Pay Period *</label>
+                    <input type="text" id="payPeriod" required placeholder="e.g., January 2026" class="form-input">
+                </div>
+                <div>
+                    <label class="form-label">Disputed Amount</label>
+                    <input type="number" id="disputedAmount" step="0.01" placeholder="0.00" class="form-input">
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label">Subject *</label>
+                <input type="text" id="subject" required placeholder="Brief description" class="form-input">
+            </div>
+
+            <div>
+                <label class="form-label">Description *</label>
+                <textarea id="description" required rows="3" placeholder="Detailed explanation..."
+                    class="form-textarea"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="form-label">Priority</label>
+                    <select id="priority" class="form-select">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                    </select>
+                </div>
+                <div id="statusField" class="hidden">
+                    <label class="form-label">Status</label>
+                    <select id="status" class="form-select">
+                        <option value="Open">Open</option>
+                        <option value="Under Review">Under Review</option>
+                        <option value="Pending Payroll">Pending Payroll</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="Escalated">Escalated</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="resolutionFields" class="hidden space-y-3">
+                <div>
+                    <label class="form-label">Resolution Notes</label>
+                    <textarea id="resolutionNotes" rows="2" placeholder="Notes about the resolution..."
+                        class="form-textarea"></textarea>
+                </div>
+                <div>
+                    <label class="form-label">Resolution Amount</label>
+                    <input type="number" id="resolutionAmount" step="0.01" placeholder="0.00" class="form-input">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-gray-200">
+                <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Modal -->
+<div id="viewModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 720px;">
+        <div class="modal-header">
+            <span class="modal-title">Dispute Details</span>
+            <button onclick="closeViewModal()" class="action-btn">
+                <iconify-icon icon="solar:close-circle-linear" class="text-lg"></iconify-icon>
+            </button>
+        </div>
+        <div id="viewContent" class="modal-body"></div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let disputes = [];
+    let employees = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadStatistics();
+        loadDisputes();
+        loadFilterOptions();
+        loadEmployees();
+        setupEventListeners();
+    });
+
+    function setupEventListeners() {
+        ['statusFilter', 'disputeTypeFilter', 'priorityFilter', 'campaignFilter', 'dateFromFilter', 'dateToFilter'].forEach(id => {
+            document.getElementById(id)?.addEventListener('change', () => {
+                currentPage = 1;
+                loadDisputes();
+            });
+        });
+
+        let searchTimeout;
+        document.getElementById('headerSearch')?.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPage = 1;
+                loadDisputes();
+            }, 300);
+        });
+
+        document.getElementById('status')?.addEventListener('change', (e) => {
+            const show = e.target.value === 'Resolved' || e.target.value === 'Rejected';
+            document.getElementById('resolutionFields').classList.toggle('hidden', !show);
+        });
+    }
+
+    function clearFilters() {
+        document.getElementById('headerSearch').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('disputeTypeFilter').value = '';
+        document.getElementById('priorityFilter').value = '';
+        document.getElementById('campaignFilter').value = '';
+        document.getElementById('dateFromFilter').value = '';
+        document.getElementById('dateToFilter').value = '';
+        currentPage = 1;
+        loadDisputes();
+    }
+
+    async function loadStatistics() {
+        try {
+            const res = await fetch('/api/pay-disputes/statistics');
+            const data = await res.json();
+            document.getElementById('totalDisputes').textContent = data.total_disputes || 0;
+            document.getElementById('openCount').textContent = data.open_count || 0;
+            document.getElementById('underReviewCount').textContent = data.under_review_count || 0;
+            document.getElementById('resolvedCount').textContent = data.resolved_count || 0;
+        } catch (e) { console.error('Error:', e); }
+    }
+
+    async function loadDisputes() {
+        const params = new URLSearchParams({ page: currentPage, limit: 50 });
+        const search = document.getElementById('headerSearch')?.value;
+        const status = document.getElementById('statusFilter')?.value;
+        const type = document.getElementById('disputeTypeFilter')?.value;
+        const priority = document.getElementById('priorityFilter')?.value;
+        const campaign = document.getElementById('campaignFilter')?.value;
+        const dateFrom = document.getElementById('dateFromFilter')?.value;
+        const dateTo = document.getElementById('dateToFilter')?.value;
+
+        if (search) params.append('search', search);
+        if (status) params.append('status', status);
+        if (type) params.append('dispute_type', type);
+        if (priority) params.append('priority', priority);
+        if (campaign) params.append('campaign', campaign);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+
+        try {
+            const res = await fetch(`/api/pay-disputes?${params}`);
+            const data = await res.json();
+            disputes = data.disputes || [];
+            totalPages = data.pages || 1;
+            renderTable();
+            updatePagination(data.total, data.page, data.limit);
+        } catch (e) {
+            console.error('Error:', e);
+            document.getElementById('disputesTableBody').innerHTML = `
+                <tr><td colspan="10" class="text-center py-8 text-red-500 text-sm">Error loading data</td></tr>
+            `;
+        }
+    }
+
+    async function loadFilterOptions() {
+        try {
+            const res = await fetch('/api/pay-disputes/filter-options');
+            const data = await res.json();
+            const select = document.getElementById('campaignFilter');
+            if (select && data.campaigns) {
+                data.campaigns.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c;
+                    opt.textContent = c;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (e) { console.error('Error:', e); }
+    }
+
+    async function loadEmployees() {
+        try {
+            const res = await fetch('/api/employees?limit=1000');
+            const data = await res.json();
+            employees = data.employees || [];
+            const select = document.getElementById('employeeId');
+            if (select) {
+                employees.forEach(emp => {
+                    const opt = document.createElement('option');
+                    opt.value = emp.id;
+                    opt.textContent = `${emp.employee_no} - ${emp.full_name}`;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (e) { console.error('Error:', e); }
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('disputesTableBody');
+        if (!disputes.length) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-500 text-sm">No disputes found</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = disputes.map(d => `
+            <tr>
+                <td><span class="font-medium text-blue-600">${d.ticket_no}</span></td>
+                <td>
+                    <div class="font-medium text-gray-900">${d.employee_name || '-'}</div>
+                    <div class="text-xs text-gray-500">${d.employee_no || ''}</div>
+                </td>
+                <td>${d.dispute_type}</td>
+                <td>${d.pay_period}</td>
+                <td class="font-medium">${d.disputed_amount ? '$' + parseFloat(d.disputed_amount).toFixed(2) : '-'}</td>
+                <td><span class="line-clamp-1">${d.subject}</span></td>
+                <td><span class="badge badge-${d.priority.toLowerCase()}">${d.priority}</span></td>
+                <td><span class="badge badge-${d.status.toLowerCase().replace(' ', '-')}">${d.status}</span></td>
+                <td class="text-gray-500">${d.created_at ? d.created_at.split('T')[0] : '-'}</td>
+                <td>
+                    <div class="flex items-center gap-0.5">
+                        <button onclick="viewDispute(${d.id})" class="action-btn" title="View">
+                            <iconify-icon icon="solar:eye-linear"></iconify-icon>
+                        </button>
+                        <button onclick="editDispute(${d.id})" class="action-btn" title="Edit">
+                            <iconify-icon icon="solar:pen-linear"></iconify-icon>
+                        </button>
+                        <button onclick="deleteDispute(${d.id})" class="action-btn danger" title="Delete">
+                            <iconify-icon icon="solar:trash-bin-trash-linear"></iconify-icon>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function updatePagination(total, page, limit) {
+        const from = total === 0 ? 0 : (page - 1) * limit + 1;
+        const to = Math.min(page * limit, total);
+        document.getElementById('showingFrom').textContent = from;
+        document.getElementById('showingTo').textContent = to;
+        document.getElementById('totalRecords').textContent = total;
+        document.getElementById('pageInfo').textContent = `${page} / ${totalPages}`;
+        document.getElementById('prevBtn').disabled = page <= 1;
+        document.getElementById('nextBtn').disabled = page >= totalPages;
+    }
+
+    function previousPage() { if (currentPage > 1) { currentPage--; loadDisputes(); } }
+    function nextPage() { if (currentPage < totalPages) { currentPage++; loadDisputes(); } }
+
+    function showAddDisputeModal() {
+        document.getElementById('modalTitle').textContent = 'New Pay Dispute';
+        document.getElementById('disputeId').value = '';
+        document.getElementById('disputeForm').reset();
+        document.getElementById('statusField').classList.add('hidden');
+        document.getElementById('resolutionFields').classList.add('hidden');
+        document.getElementById('disputeModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('disputeModal').classList.remove('active');
+    }
+
+    async function editDispute(id) {
+        try {
+            const res = await fetch(`/api/pay-disputes/${id}`);
+            const d = await res.json();
+            document.getElementById('modalTitle').textContent = 'Edit Pay Dispute';
+            document.getElementById('disputeId').value = d.id;
+            document.getElementById('employeeId').value = d.employee_id;
+            document.getElementById('disputeType').value = d.dispute_type;
+            document.getElementById('payPeriod').value = d.pay_period;
+            document.getElementById('disputedAmount').value = d.disputed_amount || '';
+            document.getElementById('subject').value = d.subject;
+            document.getElementById('description').value = d.description;
+            document.getElementById('priority').value = d.priority;
+            document.getElementById('status').value = d.status;
+            document.getElementById('resolutionNotes').value = d.resolution_notes || '';
+            document.getElementById('resolutionAmount').value = d.resolution_amount || '';
+            document.getElementById('statusField').classList.remove('hidden');
+            document.getElementById('resolutionFields').classList.toggle('hidden', !['Resolved', 'Rejected'].includes(d.status));
+            document.getElementById('disputeModal').classList.add('active');
+        } catch (e) { alert('Error loading dispute'); }
+    }
+
+    async function saveDispute(e) {
+        e.preventDefault();
+        const id = document.getElementById('disputeId').value;
+        const data = {
+            employee_id: parseInt(document.getElementById('employeeId').value),
+            dispute_type: document.getElementById('disputeType').value,
+            pay_period: document.getElementById('payPeriod').value,
+            disputed_amount: parseFloat(document.getElementById('disputedAmount').value) || null,
+            subject: document.getElementById('subject').value,
+            description: document.getElementById('description').value,
+            priority: document.getElementById('priority').value
+        };
+        if (id) {
+            data.status = document.getElementById('status').value;
+            data.resolution_notes = document.getElementById('resolutionNotes').value || null;
+            data.resolution_amount = parseFloat(document.getElementById('resolutionAmount').value) || null;
+        }
+        try {
+            const res = await fetch(id ? `/api/pay-disputes/${id}` : '/api/pay-disputes', {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) { closeModal(); loadDisputes(); loadStatistics(); }
+            else { const err = await res.json(); alert(err.detail || 'Error'); }
+        } catch (e) { alert('Error saving'); }
+    }
+
+    async function viewDispute(id) {
+        try {
+            const res = await fetch(`/api/pay-disputes/${id}`);
+            const d = await res.json();
+            document.getElementById('viewContent').innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-lg font-semibold text-blue-600">${d.ticket_no}</span>
+                        <div class="flex gap-2">
+                            <span class="badge badge-${d.priority.toLowerCase()}">${d.priority}</span>
+                            <span class="badge badge-${d.status.toLowerCase().replace(' ', '-')}">${d.status}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div><span class="text-gray-500">Employee:</span> <span class="font-medium">${d.employee_name || '-'}</span></div>
+                        <div><span class="text-gray-500">Type:</span> ${d.dispute_type}</div>
+                        <div><span class="text-gray-500">Pay Period:</span> ${d.pay_period}</div>
+                        <div><span class="text-gray-500">Amount:</span> <span class="font-medium">${d.disputed_amount ? '$' + parseFloat(d.disputed_amount).toFixed(2) : '-'}</span></div>
+                    </div>
+                    <div><p class="text-gray-500 text-sm mb-1">Subject</p><p class="text-sm">${d.subject}</p></div>
+                    <div><p class="text-gray-500 text-sm mb-1">Description</p><p class="text-sm text-gray-700 whitespace-pre-wrap">${d.description}</p></div>
+                    ${d.resolution_notes ? `
+                    <div class="bg-green-50 border border-green-200 rounded p-3">
+                        <p class="text-xs text-green-800 font-medium mb-1">Resolution</p>
+                        <p class="text-sm text-green-700">${d.resolution_notes}</p>
+                        ${d.resolution_amount ? `<p class="text-sm font-medium text-green-800 mt-2">Amount: $${parseFloat(d.resolution_amount).toFixed(2)}</p>` : ''}
+                    </div>` : ''}
+                    <div class="text-xs text-gray-500 pt-3 border-t border-gray-200">
+                        Created: ${d.created_at ? d.created_at.split('T')[0] : '-'} by ${d.creator_name || 'Unknown'}
+                    </div>
+                </div>
+            `;
+            document.getElementById('viewModal').classList.add('active');
+        } catch (e) { alert('Error loading'); }
+    }
+
+    function closeViewModal() {
+        document.getElementById('viewModal').classList.remove('active');
+    }
+
+    async function deleteDispute(id) {
+        if (!confirm('Delete this dispute?')) return;
+        try {
+            const res = await fetch(`/api/pay-disputes/${id}`, { method: 'DELETE' });
+            if (res.ok) { loadDisputes(); loadStatistics(); }
+            else { alert('Error deleting'); }
+        } catch (e) { alert('Error'); }
+    }
+
+    function exportDisputes() {
+        const params = new URLSearchParams();
+        const search = document.getElementById('headerSearch')?.value;
+        const status = document.getElementById('statusFilter')?.value;
+        const type = document.getElementById('disputeTypeFilter')?.value;
+        const priority = document.getElementById('priorityFilter')?.value;
+        const campaign = document.getElementById('campaignFilter')?.value;
+        const dateFrom = document.getElementById('dateFromFilter')?.value;
+        const dateTo = document.getElementById('dateToFilter')?.value;
+        if (search) params.append('search', search);
+        if (status) params.append('status', status);
+        if (type) params.append('dispute_type', type);
+        if (priority) params.append('priority', priority);
+        if (campaign) params.append('campaign', campaign);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        window.location.href = `/api/pay-disputes/export?${params}`;
+    }
+
+    function toggleDropdown() {
+        document.getElementById('dropdownMenu').classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+        const dd = document.getElementById('profileDropdown');
+        if (!dd.contains(e.target)) document.getElementById('dropdownMenu').classList.add('hidden');
+    });
+
+    document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+        document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    });
+</script>
+{% endblock %}

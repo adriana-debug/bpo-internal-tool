@@ -13,7 +13,7 @@ MODULES = [
     # HR & People
     {"name": "employee_directory", "display_name": "Employee Directory", "category": "operations", "icon": "solar:users-group-rounded-bold-duotone", "route": "/operations/employee-directory", "sort_order": 10},
     {"name": "requests", "display_name": "Requests", "category": "hr_people", "icon": "solar:clipboard-list-bold-duotone", "route": "/hr/requests", "sort_order": 11},
-    {"name": "pay_disputes", "display_name": "Pay Disputes", "category": "hr_people", "icon": "solar:wallet-money-bold-duotone", "route": "/hr/pay-disputes", "sort_order": 12},
+    {"name": "pay_disputes", "display_name": "Pay Disputes", "category": "operations", "icon": "solar:bill-list-bold-duotone", "route": "/operations/pay-disputes", "sort_order": 3},
     {"name": "ir_nte_logs", "display_name": "IR/NTE Logs", "category": "hr_people", "icon": "solar:document-text-bold-duotone", "route": "/hr/ir-nte", "sort_order": 13},
     {"name": "onboarding", "display_name": "Onboarding", "category": "hr_people", "icon": "solar:user-plus-bold-duotone", "route": "/hr/onboarding", "sort_order": 14},
     # Admin
@@ -154,10 +154,17 @@ ROLES = [
 
 def seed_roles_and_modules(db: Session):
     """Initialize roles and modules in database"""
-    # Create modules
+    # Create or update modules
     for mod_data in MODULES:
         existing = db.query(Module).filter(Module.name == mod_data["name"]).first()
-        if not existing:
+        if existing:
+            # Update existing module with latest values
+            existing.display_name = mod_data["display_name"]
+            existing.category = mod_data["category"]
+            existing.icon = mod_data["icon"]
+            existing.route = mod_data["route"]
+            existing.sort_order = mod_data["sort_order"]
+        else:
             module = Module(**mod_data)
             db.add(module)
     db.commit()

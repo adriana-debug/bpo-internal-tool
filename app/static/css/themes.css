@@ -1,21 +1,432 @@
-/* Theme System - Color Palettes */
+/* Semantic Theme System */
 
-/* Default Theme (Blue) */
-:root,
+/* 1. Global Design Tokens (Base) */
+:root {
+    /* Safe Slate/Gray Spectrum */
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --slate-950: #020617;
+
+    /* Semantic Defaults (Light Mode) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    /* slate-50 */
+    --bg-surface: #ffffff;
+
+    --text-primary: #0f172a;
+    /* slate-900 */
+    --text-secondary: #475569;
+    /* slate-600 */
+    --text-muted: #94a3b8;
+    /* slate-400 */
+
+    --border: #e2e8f0;
+    /* slate-200 */
+    --border-subtle: #f1f5f9;
+    /* slate-100 */
+
+    /* Status Colors (Light Mode) */
+    --success: #10b981;
+    --success-bg: #ecfdf5;
+    --error: #ef4444;
+    --error-bg: #fef2f2;
+    --warning: #f59e0b;
+    --warning-bg: #fffbeb;
+    --info: #3b82f6;
+    --info-bg: #eff6ff;
+}
+
+/* 2. Global Dark Mode Tokens (The "Premium" System) */
+.dark,
+[data-theme*="-dark"] {
+    /* Backgrounds: Not Pure Black */
+    --bg-primary: #0f1117;
+    /* Deepest Root */
+    --bg-secondary: #161b22;
+    /* Sidebar / Nav */
+    --bg-surface: #1e293b;
+    /* Cards / Panels */
+
+    /* Text: High Legibility, Low Fatigue */
+    --text-primary: #f1f5f9;
+    /* slate-100 */
+    --text-secondary: #94a3b8;
+    /* slate-400 */
+    --text-muted: #64748b;
+    /* slate-500 */
+
+    /* Borders: Subtle */
+    --border: #334155;
+    /* slate-700 */
+    --border-subtle: #1e293b;
+    /* slate-800 */
+
+    /* Status Colors (Dark Mode Safe) */
+    --success: #34d399;
+    /* Emerald 400 */
+    --success-bg: rgba(6, 78, 59, 0.4);
+    --error: #f87171;
+    /* Red 400 */
+    --error-bg: rgba(69, 10, 10, 0.4);
+    --warning: #fbbf24;
+    /* Amber 400 */
+    --warning-bg: rgba(69, 26, 3, 0.4);
+    --info: #38bdf8;
+    /* Sky 400 */
+    --info-bg: rgba(12, 74, 110, 0.4);
+}
+
+
+/* 3. Theme Palettes */
+
+/* --- Default (Ocean) --- */
 [data-theme="default"] {
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
-    --secondary: #93c5fd;
+    --secondary: #dbeafe;
     --accent: #3b82f6;
-    --success: #10b981;
-    --error: #ef4444;
-    --warning: #f59e0b;
-    --info: #3b82f6;
-    --bg-primary: #ffffff;
-    --bg-secondary: #f9fafb;
-    --text-primary: #1f2937;
-    --text-secondary: #6b7280;
-    --border: #e5e7eb;
+}
+
+[data-theme="default-dark"] {
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --secondary: #1e3a8a;
+    --accent: #60a5fa;
+}
+
+/* --- Forest --- */
+[data-theme="forest"] {
+    --primary: #059669;
+    --primary-hover: #047857;
+    --secondary: #d1fae5;
+    --accent: #10b981;
+}
+
+[data-theme="forest-dark"] {
+    --primary: #34d399;
+    --primary-hover: #10b981;
+    --secondary: #064e3b;
+    /* Dark Green bg */
+    --accent: #34d399;
+}
+
+/* --- Amethyst --- */
+[data-theme="amethyst"] {
+    --primary: #7c3aed;
+    --primary-hover: #6d28d9;
+    --secondary: #ede9fe;
+    --accent: #8b5cf6;
+}
+
+[data-theme="amethyst-dark"] {
+    --primary: #a78bfa;
+    --primary-hover: #8b5cf6;
+    --secondary: #4c1d95;
+    --accent: #a78bfa;
+}
+
+/* --- Sunset (Orange) --- */
+[data-theme="sunset"] {
+    --primary: #f97316;
+    --primary-hover: #ea580c;
+    --secondary: #ffedd5;
+    --accent: #fb923c;
+}
+
+[data-theme="sunset-dark"] {
+    --primary: #fb923c;
+    --primary-hover: #f97316;
+    --secondary: #7c2d12;
+    --accent: #fdba74;
+}
+
+/* --- Berry (Pink) --- */
+[data-theme="berry"] {
+    --primary: #db2777;
+    --primary-hover: #be185d;
+    --secondary: #fce7f3;
+    --accent: #ec4899;
+}
+
+[data-theme="berry-dark"] {
+    --primary: #f472b6;
+    --primary-hover: #e879f9;
+    --secondary: #831843;
+    --accent: #fbcfe8;
+}
+
+/* --- CITRUS (User Refined) --- */
+[data-theme="citrus"] {
+    --primary: #D4E819;
+    /* User requested */
+    --primary-hover: #c5d912;
+    --secondary: #D4E819;
+    --accent: #D4E819;
+    --btn-text-color: #001433;
+    /* User requested */
+}
+
+/* Citrus Accessibility Override: Force "text-primary" class to use Navy, 
+   because Lime text on white is unreadable. */
+[data-theme="citrus"] .text-primary {
+    color: #001433 !important;
+}
+
+
+[data-theme="citrus-dark"] {
+    /* Specialized Navy Dark Mode */
+    --bg-primary: #020617;
+    --bg-secondary: #0b1120;
+    --bg-surface: #151e32;
+    --border: #1e293b;
+    --border-subtle: #0f172a;
+
+    --primary: #D4E819;
+    --primary-hover: #c5d912;
+    --secondary: #1a2c4e;
+    --accent: #D4E819;
+
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+
+    --btn-text-color: #001433;
+}
+
+
+/* 4. Component Usage Mapping */
+[data-theme] {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Backgrounds */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Override standard components to use variables */
+
+/* 1. Sidebar */
+aside#sidebar {
+    background-color: var(--bg-secondary) !important;
+    border-right-color: var(--border) !important;
+}
+
+/* --- Table Dark Mode Fixes --- */
+.dark table,
+[data-theme*="-dark"] table {
+    border-color: var(--border) !important;
+    background-color: var(--bg-surface) !important;
+}
+
+.dark thead,
+[data-theme*="-dark"] thead {
+    background-color: var(--bg-surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+    color: var(--text-muted) !important;
+    /* Muted text for headers as requested? "Make it like the bg of data row" */
+}
+
+.dark thead th,
+[data-theme*="-dark"] thead th {
+    background-color: var(--bg-surface) !important;
+    /* Match data row background */
+    border-color: var(--border) !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600;
+}
+
+.dark tbody tr,
+[data-theme*="-dark"] tbody tr,
+.dark td,
+[data-theme*="-dark"] td {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border) !important;
+    border-bottom-color: var(--border) !important;
+    color: var(--text-secondary) !important;
+}
+
+.dark tbody tr:hover,
+[data-theme*="-dark"] tbody tr:hover {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Global Dark Mode Fixes (Borders & Backgrounds) */
+/* Force ALL white backgrounds to turn dark in dark mode */
+.dark .bg-white,
+[data-theme*="-dark"] .bg-white,
+/* Specific fix for Table Wrappers/Cards */
+.dark .bg-white.rounded-lg,
+[data-theme*="-dark"] .bg-white.rounded-lg {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Fix Table Footers/Pagination (often bg-gray-50) */
+.dark .bg-gray-50,
+[data-theme*="-dark"] .bg-gray-50 {
+    background-color: var(--bg-surface) !important;
+    /* Make footer match the card body */
+    border-color: var(--border) !important;
+    color: var(--text-secondary) !important;
+}
+
+.dark .border-gray-200,
+[data-theme*="-dark"] .border-gray-200,
+.dark .border-gray-100,
+[data-theme*="-dark"] .border-gray-100,
+.dark .border-b,
+[data-theme*="-dark"] .border-b {
+    border-color: var(--border) !important;
+    /* Force dark borders everywhere */
+}
+
+/* Fix Header Brightness in Dark Mode & Alignment */
+/* The top header and sidebar header borders must match */
+.dark header,
+[data-theme*="-dark"] header,
+.dark #sidebar .border-b,
+[data-theme*="-dark"] #sidebar .border-b {
+    background-color: var(--bg-primary) !important;
+    /* Darker header background (Root/Primary) for contrast against Surface */
+    border-color: var(--border) !important;
+}
+
+/* Fix Text Visibility in Headers/Footers */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+[data-theme*="-dark"] h1,
+[data-theme*="-dark"] h2 {
+    color: var(--text-primary) !important;
+}
+
+.dark p.text-gray-500,
+[data-theme*="-dark"] p.text-gray-500 {
+    color: var(--text-secondary) !important;
+    /* Make gray text lighter in dark mode */
+}
+
+/* 2. Cards */
+.bg-white {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+}
+
+/* 3. Text colors */
+.text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+.text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+.text-gray-600 {
+    color: var(--text-secondary) !important;
+}
+
+.text-gray-500 {
+    color: var(--text-muted) !important;
+}
+
+/* 4. Buttons */
+button.bg-primary,
+.btn-primary,
+.bg-primary {
+    background-color: var(--primary) !important;
+    color: var(--btn-text-color, #ffffff) !important;
+    /* Default white, overrides for Citrus */
+    border: none;
+}
+
+button.bg-primary:hover {
+    background-color: var(--primary-hover) !important;
+}
+
+/* 5. Inputs */
+input,
+select,
+textarea {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px var(--bg-secondary), 0 0 0 4px var(--primary) !important;
+}
+
+/* 6. Status Badges */
+.text-success {
+    color: var(--success) !important;
+}
+
+.bg-success\/10 {
+    background-color: var(--success-bg) !important;
+}
+
+.text-error {
+    color: var(--error) !important;
+}
+
+.bg-error\/10 {
+    background-color: var(--error-bg) !important;
+}
+
+.text-warning {
+    color: var(--warning) !important;
+}
+
+.bg-warning\/10 {
+    background-color: var(--warning-bg) !important;
+}
+
+/* 7. Navigation Items */
+nav a:hover,
+.hover\:bg-gray-100:hover {
+    background-color: var(--slate-100) !important;
+    /* Global minimal light gray hover */
+    color: var(--text-primary) !important;
+}
+
+.dark nav a:hover,
+.dark .hover\:bg-gray-100:hover {
+    background-color: var(--slate-800) !important;
+    /* Consistent gray for dark mode too */
+}
+
+/* Active Nav Item */
+.bg-primary\/10 {
+    background-color: var(--secondary) !important;
+    color: var(--primary) !important;
+}
+
+/* Header */
+header {
+    background-color: var(--bg-primary) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+/* KPICards border hover */
+.kpi-card:hover {
+    border-color: var(--primary) !important;
 }
 
 /* Forest Theme (Green) */
@@ -92,6 +503,74 @@
     --primary-hover: #7c3aed;
     --secondary: #4c1d95;
     --accent: #a78bfa;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #60a5fa;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --border: #374151;
+}
+
+/* Sunset Theme (Orange) */
+[data-theme="sunset"] {
+    --primary: #f97316;
+    --primary-hover: #ea580c;
+    --secondary: #fdba74;
+    --accent: #fb923c;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    --bg-primary: #ffffff;
+    --bg-secondary: #fff7ed;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border: #fed7aa;
+}
+
+/* Sunset Dark Theme */
+[data-theme="sunset-dark"] {
+    --primary: #fb923c;
+    --primary-hover: #f97316;
+    --secondary: #7c2d12;
+    --accent: #fdba74;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #60a5fa;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --border: #374151;
+}
+
+/* Berry Theme (Pink) */
+[data-theme="berry"] {
+    --primary: #ec4899;
+    --primary-hover: #db2777;
+    --secondary: #fbcfe8;
+    --accent: #f472b6;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    --bg-primary: #ffffff;
+    --bg-secondary: #fdf2f8;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border: #fbcfe8;
+}
+
+/* Berry Dark Theme */
+[data-theme="berry-dark"] {
+    --primary: #f472b6;
+    --primary-hover: #ec4899;
+    --secondary: #831843;
+    --accent: #fbcfe8;
     --success: #10b981;
     --error: #ef4444;
     --warning: #f59e0b;

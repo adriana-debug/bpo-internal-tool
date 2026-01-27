@@ -1,7 +1,7 @@
 import requests
 import json
 
-base_url = "http://127.0.0.1:8002"
+base_url = "http://127.0.0.1:8005"
 session = requests.Session()
 
 def test_login_and_user_management():

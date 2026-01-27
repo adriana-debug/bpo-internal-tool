@@ -97,49 +97,56 @@
             </div>
 
             <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-gray-500 uppercase">Total Users</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ users|length }}</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <iconify-icon icon="solar:users-group-rounded-bold-duotone" class="text-xl text-primary"></iconify-icon>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <!-- Total Users -->
+                <div class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 kpi-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Users</p>
+                        <div class="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-lg">
+                            <iconify-icon icon="solar:users-group-rounded-line-duotone" class="text-xl text-primary"></iconify-icon>
                         </div>
                     </div>
-                </div>
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-gray-500 uppercase">Active</p>
-                            <p class="text-2xl font-bold text-success">{{ active_users }}</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                            <iconify-icon icon="solar:check-circle-bold-duotone" class="text-xl text-success"></iconify-icon>
-                        </div>
+                    <div>
+                        <p class="text-3xl font-bold text-gray-800">{{ users|length }}</p>
                     </div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-gray-500 uppercase">Roles</p>
-                            <p class="text-2xl font-bold text-secondary">{{ roles|length }}</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                            <iconify-icon icon="solar:shield-user-bold-duotone" class="text-xl text-secondary"></iconify-icon>
+
+                <!-- Active -->
+                <div class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 kpi-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Active</p>
+                        <div class="w-10 h-10 flex items-center justify-center bg-success/10 rounded-lg">
+                            <iconify-icon icon="solar:check-circle-line-duotone" class="text-xl text-success"></iconify-icon>
                         </div>
                     </div>
+                    <div>
+                        <p class="text-3xl font-bold text-gray-800">{{ active_users }}</p>
+                    </div>
                 </div>
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-medium text-gray-500 uppercase">Inactive</p>
-                            <p class="text-2xl font-bold text-warning">{{ inactive_users }}</p>
+
+                <!-- Roles -->
+                <div class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 kpi-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Roles</p>
+                        <div class="w-10 h-10 flex items-center justify-center bg-info/10 rounded-lg">
+                            <iconify-icon icon="solar:shield-user-line-duotone" class="text-xl text-info"></iconify-icon>
                         </div>
-                        <div class="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                            <iconify-icon icon="solar:user-block-bold-duotone" class="text-xl text-warning"></iconify-icon>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-gray-800">{{ roles|length }}</p>
+                    </div>
+                </div>
+
+                <!-- Inactive -->
+                <div class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 kpi-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Inactive</p>
+                        <div class="w-10 h-10 flex items-center justify-center bg-warning/10 rounded-lg">
+                            <iconify-icon icon="solar:user-block-line-duotone" class="text-xl text-warning"></iconify-icon>
                         </div>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-gray-800">{{ inactive_users }}</p>
                     </div>
                 </div>
             </div>
@@ -174,7 +181,7 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-600">{{ u.employee_no }}</td>
                                 <td class="px-6 py-4">
-                                    <span class="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">{{ u.role.display_name if u.role else 'No Role' }}</span>
+                                    <span class="text-sm font-medium text-info bg-info/10 px-2 py-1 rounded-full">{{ u.role.display_name if u.role else 'No Role' }}</span>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-600">{{ u.department or '-' }}</td>
                                 <td class="px-6 py-4">
@@ -185,8 +192,8 @@
                                             Active
                                         </span>
                                         {% else %}
-                                        <span id="status-{{ u.id }}" class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                        <span id="status-{{ u.id }}" class="inline-flex items-center gap-1 text-xs font-medium text-warning bg-warning/10 px-2 py-1 rounded-full">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-warning"></span>
                                             Inactive
                                         </span>
                                         {% endif %}

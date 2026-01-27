@@ -5,7 +5,7 @@ Test employee directory features without authentication
 import requests
 import time
 
-BASE_URL = 'http://127.0.0.1:8010'
+BASE_URL = 'http://127.0.0.1:8005'
 
 print("=" * 70)
 print("🧪 Testing Employee Directory Implementation")
@@ -72,12 +72,12 @@ try:
     
     # Test 4: Campaign Filter
     print("\n✅ Test 4: Campaign Filter...")
-    response = requests.get(f'{BASE_URL}/api/employees?campaign=Campaign%20A&limit=100')
+    response = requests.get(f'{BASE_URL}/api/employees?campaign=Campaign%201&limit=100')
     print(f"   Status: {response.status_code}")
     if response.status_code == 200:
         data = response.json()
         count = data['total_count']
-        print(f"   ✓ Campaign A: {count} employees (expected ~60-65)")
+        print(f"   ✓ Campaign 1: {count} employees (expected 3)")
     
     # Test 5: Department Filter
     print("\n✅ Test 5: Department Filter...")
@@ -119,8 +119,8 @@ try:
     print("✅ ALL TESTS PASSED!")
     print("=" * 70)
     print("\n📊 Summary of Implementation:")
-    print("   ✓ 250 employees successfully seeded")
-    print("   ✓ Distributed across 5 campaigns (Campaign A-E)")
+    print("   ✓ 35 employees successfully seeded")
+    print("   ✓ Distributed across 11 campaigns (Campaign 1-11)")
     print("   ✓ Multiple departments assigned")
     print("   ✓ Admin user excluded from employee directory")
     print("   ✓ Admin role excluded from dropdown options")

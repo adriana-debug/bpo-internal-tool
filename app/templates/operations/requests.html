@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mx-auto py-8">
+    <h1 class="text-2xl font-bold mb-6">Requests</h1>
+    <table class="min-w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+        <thead>
+            <tr>
+                <th class="px-4 py-2 border-b">ID</th>
+                <th class="px-4 py-2 border-b">User ID</th>
+                <th class="px-4 py-2 border-b">Type</th>
+                <th class="px-4 py-2 border-b">Status</th>
+                <th class="px-4 py-2 border-b">Details</th>
+                <th class="px-4 py-2 border-b">Created At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr class="hover:bg-gray-100 dark:hover:bg-gray-700">
+                <td class="px-4 py-2 border-b">{{ req.id }}</td>
+                <td class="px-4 py-2 border-b">{{ req.user_id }}</td>
+                <td class="px-4 py-2 border-b">{{ req.type }}</td>
+                <td class="px-4 py-2 border-b">{{ req.status }}</td>
+                <td class="px-4 py-2 border-b">{{ req.details }}</td>
+                <td class="px-4 py-2 border-b">{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center py-4 text-gray-500">No requests found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

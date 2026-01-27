@@ -30,13 +30,13 @@
     <style>
         body { font-family: 'DM Sans', sans-serif; }
     </style>
-    <link rel="stylesheet" href="{{ url_for('static', path='css/themes.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='css/theme-selector.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/themes.css') }}?v=2">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/theme-selector.css') }}?v=2">
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 min-h-screen">
     {% block body %}{% endblock %}
-    <script src="{{ url_for('static', path='js/theme-manager.js') }}"></script>
+    <script src="{{ url_for('static', path='js/theme-manager.js') }}?v=2"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

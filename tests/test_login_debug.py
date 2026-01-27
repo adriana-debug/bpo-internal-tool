@@ -55,7 +55,7 @@ def test_login_endpoint():
         print("❌ Cannot test login - admin user not found")
         return False
     
-    url = "http://localhost:8001/login"
+    url = "http://localhost:8005/login"
     
     # Try with admin credentials (password: admin123)
     data = {
@@ -181,7 +181,7 @@ def main():
         print("\n💡 SUGGESTIONS:")
         print("   1. If database not found, run: python reset_db.py")
         print("   2. If admin user missing, check seed process")
-        print("   3. Ensure port 8001 is accessible")
+        print("   3. Ensure port 8005 is accessible")
         print("   4. Check that app/database.db exists")
     
     print("=" * 60 + "\n")

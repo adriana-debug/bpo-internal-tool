@@ -1,69 +1,243 @@
-/* New Minimal Theme Selector */
+/* Premium Floating Theme Selector */
+
+/* Hide the original container contents if they persist initially, 
+   but we will replace them via JS */
 #theme-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px;
-    background-color: var(--bg-secondary);
-    border-radius: 9999px;
-    border: 1px solid var(--border);
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
 }
 
-#theme-selector {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.theme-swatch {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    outline: none;
-    box-shadow: 0 0 0 0 rgba(0,0,0,0);
-}
-
-.theme-swatch:hover {
-    transform: scale(1.1);
-}
-
-.theme-swatch.active {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px var(--bg-primary);
-}
-
-#dark-mode-toggle {
+/* 1. Trigger Button in Header */
+.theme-trigger-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: none;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-primary);
     color: var(--text-secondary);
-    transition: background-color 0.2s ease, color 0.2s ease;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-#dark-mode-toggle:hover {
-    background-color: var(--border);
+.theme-trigger-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background-color: var(--bg-secondary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* 2. Floating Settings Panel */
+.theme-settings-panel {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    width: 320px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+    /* Inner border */
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .theme-settings-panel {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.theme-settings-panel.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+/* Panel Header */
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.panel-title {
+    font-size: 16px;
+    font-weight: 700;
     color: var(--text-primary);
 }
 
-#dark-mode-toggle .icon-sun,
-#dark-mode-toggle .icon-moon {
-    display: none;
+/* Close Button */
+.panel-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    transition: all 0.2s;
 }
 
-/* Show sun icon in dark mode, moon icon in light mode */
-.dark #dark-mode-toggle .icon-sun {
-    display: block;
+.panel-close:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
-html:not(.dark) #dark-mode-toggle .icon-moon {
-    display: block;
+/* Section Label */
+.panel-section-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+/* Theme Grid */
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+/* Theme Card */
+.theme-card {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+}
+
+.theme-preview {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    background: var(--bg-secondary);
+}
+
+.theme-preview::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    background-color: var(--theme-color);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.theme-card:hover .theme-preview {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.theme-card.active .theme-preview {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--bg-primary), 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.theme-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.theme-card.active .theme-name {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Dark Mode Switcher Row */
+.appearance-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    border-radius: 12px;
+    background-color: var(--bg-secondary);
+}
+
+.appearance-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    appearance: none;
+    width: 44px;
+    height: 24px;
+    background-color: #cbd5e1;
+    border-radius: 9999px;
+    position: relative;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.3s ease;
+    border: none;
+}
+
+/* Unchecked state in dark mode - use a visible gray */
+.dark .toggle-switch {
+    background-color: var(--slate-600, #475569);
+}
+
+/* Checked state - use primary color */
+.toggle-switch:checked {
+    background-color: var(--primary) !important;
+}
+
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Move dot to right when checked */
+.toggle-switch:checked::after {
+    transform: translateX(20px);
+}
+
+/* Focus ring for accessibility */
+.toggle-switch:focus {
+    box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary);
+}
+
+/* Hover effect */
+.toggle-switch:hover {
+    opacity: 0.9;
 }

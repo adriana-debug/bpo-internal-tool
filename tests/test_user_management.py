@@ -7,7 +7,7 @@ import requests
 import time
 
 # Configuration
-BASE_URL = "http://127.0.0.1:8002"
+BASE_URL = "http://127.0.0.1:8005"
 LOGIN_URL = f"{BASE_URL}/"
 ADMIN_USERS_URL = f"{BASE_URL}/admin/users"
 

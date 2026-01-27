@@ -1,0 +1,1230 @@
+{% extends "base.html" %}
+
+{% block title %}Shift Schedule - BPO Internal Platform{% endblock %}
+
+{% block body %}
+<style>
+    #filtersPanel {
+        transition: all 0.3s ease-in-out;
+        max-height: 500px;
+    }
+
+    #filtersPanel.hidden {
+        max-height: 0;
+        overflow: hidden;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+    }
+
+    /* Highlight current day - uses theme primary color */
+    .current-day {
+        background-color: var(--secondary) !important;
+        border-left: 4px solid var(--primary) !important;
+        position: relative;
+    }
+
+    /* Dark mode adjustment for current day */
+    .dark .current-day,
+    [data-theme*="-dark"] .current-day {
+        background-color: var(--bg-surface) !important;
+        border-left: 4px solid var(--primary) !important;
+    }
+
+    /* Current day header highlight */
+    .current-day-header {
+        background-color: var(--secondary) !important;
+        color: var(--primary) !important;
+        font-weight: 700 !important;
+        border-radius: 0.5rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .dark .current-day-header,
+    [data-theme*="-dark"] .current-day-header {
+        background-color: var(--bg-surface) !important;
+        color: var(--primary) !important;
+    }
+
+    /* Shift cell styling */
+    .shift-cell {
+        text-align: center;
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        min-width: 100px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .shift-cell:hover {
+        background-color: var(--slate-100);
+    }
+
+    .shift-badge {
+        display: inline-block;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .shift-badge:hover {
+        transform: scale(1.05);
+    }
+
+    .shift-morning {
+        background-color: var(--success-bg);
+        color: var(--success);
+    }
+
+    .shift-afternoon {
+        background-color: var(--info-bg);
+        color: var(--info);
+    }
+
+    .shift-night {
+        background-color: var(--warning-bg);
+        color: var(--warning);
+    }
+
+    .shift-rest {
+        background-color: var(--slate-100);
+        color: var(--slate-500);
+    }
+
+    .dark .shift-rest {
+        background-color: var(--slate-800);
+        color: var(--slate-400);
+    }
+
+    /* Shift cell hover in dark mode */
+    .dark .shift-cell:hover,
+    [data-theme*="-dark"] .shift-cell:hover {
+        background-color: var(--bg-secondary) !important;
+    }
+
+    /* Inline edit dropdown */
+    .shift-select {
+        width: 100%;
+        padding: 0.375rem 0.5rem;
+        font-size: 0.75rem;
+        border: 2px solid var(--primary);
+        border-radius: 0.375rem;
+        background-color: var(--bg-surface, white);
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    .dark .shift-select,
+    [data-theme*="-dark"] .shift-select {
+        background-color: var(--bg-surface);
+        color: var(--text-primary);
+    }
+
+    /* Sticky column dark mode fix */
+    .dark .sticky,
+    [data-theme*="-dark"] .sticky {
+        background-color: var(--bg-surface) !important;
+    }
+
+    .dark tr:hover .sticky,
+    [data-theme*="-dark"] tr:hover .sticky {
+        background-color: var(--bg-secondary) !important;
+    }
+
+    /* Published badge */
+    .published-badge {
+        background-color: var(--success-bg);
+        color: var(--success);
+    }
+
+    .unpublished-badge {
+        background-color: var(--warning-bg);
+        color: var(--warning);
+    }
+</style>
+
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed left-0 top-0 z-40 h-screen w-64 bg-white dark:bg-dark border-r border-gray-200 transform -translate-x-full lg:translate-x-0 transition-transform duration-200">
+        <!-- Logo -->
+        <div class="flex items-center gap-3 px-4 py-5 border-b border-gray-100 dark:border-gray-700">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+                style="background: linear-gradient(135deg, var(--primary), var(--secondary));">
+                <iconify-icon icon="solar:buildings-3-bold-duotone" class="text-2xl text-white"></iconify-icon>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-sm font-bold text-gray-900 dark:text-white leading-tight">BPO Internal</span>
+                <span class="text-xs font-medium text-primary">Platform</span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="p-4 space-y-1 overflow-y-auto h-[calc(100vh-80px)]">
+            {% set categories = [
+            ('dashboard', 'Dashboard'),
+            ('operations', 'Operations'),
+            ('hr_people', 'HR & People'),
+            ('admin', 'Administration')
+            ] %}
+
+            {% for cat_key, cat_name in categories %}
+            {% set cat_modules = [] %}
+            {% for mod in modules %}
+            {% if mod.category == cat_key %}
+            {% set _ = cat_modules.append(mod) %}
+            {% endif %}
+            {% endfor %}
+
+            {% if cat_modules %}
+            {% if cat_key != 'dashboard' %}
+            <div class="pt-4">
+                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ cat_name }}</p>
+                {% endif %}
+
+                {% for mod in cat_modules %}
+                <a href="{{ mod.route }}" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                                  {% if current_route == mod.route %}
+                                  bg-primary/10 text-primary font-medium
+                                  {% else %}
+                                  text-gray-600 hover:bg-gray-100
+                                  {% endif %}">
+                    <iconify-icon icon="{{ mod.icon }}" class="text-xl"></iconify-icon>
+                    <span>{{ mod.display_name }}</span>
+                </a>
+                {% endfor %}
+
+                {% if cat_key != 'dashboard' %}
+            </div>
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 lg:ml-64">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
+            <div class="flex items-center justify-between">
+                <!-- Mobile Menu Toggle -->
+                <button id="sidebarToggle" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                    <iconify-icon icon="solar:hamburger-menu-bold" class="text-xl text-gray-600"></iconify-icon>
+                </button>
+
+                <!-- Search -->
+                <div class="hidden md:flex items-center flex-1 max-w-md mx-4">
+                    <div class="relative w-full">
+                        <iconify-icon icon="solar:magnifer-bold"
+                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></iconify-icon>
+                        <input type="text" id="headerSearch" placeholder="Search schedules..."
+                            class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    </div>
+                </div>
+
+                <!-- Right Actions -->
+                <div class="flex items-center gap-3">
+                    <!-- Theme Selector -->
+                    <div id="theme-container" class="flex items-center gap-2 bg-gray-100 dark:bg-dark rounded-full p-1">
+                        <div id="theme-selector" class="flex items-center gap-1"></div>
+                        <button id="dark-mode-toggle"
+                            class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            title="Toggle Dark Mode">
+                            <iconify-icon icon="solar:sun-bold"
+                                class="icon-sun text-lg text-gray-600 dark:text-gray-300"></iconify-icon>
+                            <iconify-icon icon="solar:moon-bold"
+                                class="icon-moon text-lg text-gray-600 dark:text-gray-300"></iconify-icon>
+                        </button>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="relative" id="profileDropdown">
+                        <button class="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100"
+                            onclick="toggleDropdown()">
+                            <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <iconify-icon icon="solar:user-bold-duotone" class="text-primary"></iconify-icon>
+                            </div>
+                            <div class="hidden md:block text-left">
+                                <span class="text-sm font-medium text-gray-700 block">{{ user.full_name }}</span>
+                                <span class="text-xs text-gray-500">{{ user.role.display_name if user.role else 'No
+                                    Role' }}</span>
+                            </div>
+                            <iconify-icon icon="solar:alt-arrow-down-bold"
+                                class="text-gray-400 hidden md:block"></iconify-icon>
+                        </button>
+                        <div id="dropdownMenu"
+                            class="hidden absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg">
+                            <a href="/logout"
+                                class="flex items-center gap-2 px-4 py-2 text-sm text-error hover:bg-gray-50 rounded-lg">
+                                <iconify-icon icon="solar:logout-2-bold-duotone"></iconify-icon>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Container -->
+        <main class="p-4 lg:p-6 space-y-6">
+            <!-- Page Title -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <iconify-icon icon="solar:calendar-bold-duotone" class="text-2xl text-primary"></iconify-icon>
+                        Shift Schedule
+                    </h1>
+                    <p class="text-sm text-gray-600 mt-1">Manage weekly employee shift schedules</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="exportSchedules()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary/20">
+                        <iconify-icon icon="solar:export-bold" class="text-lg"></iconify-icon>
+                        Export
+                    </button>
+                    <button onclick="showUploadModal()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary/20">
+                        <iconify-icon icon="solar:upload-bold" class="text-lg"></iconify-icon>
+                        Upload
+                    </button>
+                    <button onclick="showAddScheduleModal()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary border border-primary rounded-lg hover:bg-primary/90 focus:ring-2 focus:ring-primary/20">
+                        <iconify-icon icon="solar:add-circle-bold" class="text-lg"></iconify-icon>
+                        Add Schedule
+                    </button>
+                    <button onclick="publishSchedules()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-success border border-success rounded-lg hover:bg-success/90 focus:ring-2 focus:ring-success/20">
+                        <iconify-icon icon="solar:check-circle-bold" class="text-lg"></iconify-icon>
+                        Publish
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Total Employees -->
+                <div
+                    class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Employees</p>
+                        <div class="w-10 h-10 flex items-center justify-center bg-primary/10 rounded-lg">
+                            <iconify-icon icon="solar:users-group-rounded-bold-duotone"
+                                class="text-xl text-primary"></iconify-icon>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-gray-800" id="totalEmployees">-</p>
+                        <p class="text-xs text-gray-500 mt-1">Active employees</p>
+                    </div>
+                </div>
+
+                <!-- Total Schedules -->
+                <div
+                    class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Schedules This Week</p>
+                        <div class="w-10 h-10 flex items-center justify-center bg-success/10 rounded-lg">
+                            <iconify-icon icon="solar:calendar-mark-bold-duotone"
+                                class="text-xl text-success"></iconify-icon>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-gray-800" id="totalSchedules">-</p>
+                        <p class="text-xs text-green-600 mt-1" id="coveragePercentage">-% coverage</p>
+                    </div>
+                </div>
+
+                <!-- Published Schedules -->
+                <div
+                    class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Published</p>
+                        <div class="w-10 h-10 flex items-center justify-center bg-info/10 rounded-lg">
+                            <iconify-icon icon="solar:check-circle-bold-duotone"
+                                class="text-xl text-info"></iconify-icon>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-3xl font-bold text-gray-800" id="publishedSchedules">-</p>
+                        <p class="text-xs text-blue-600 mt-1" id="unpublishedCount">- unpublished</p>
+                    </div>
+                </div>
+
+                <!-- Shift Distribution -->
+                <div
+                    class="bg-white border border-gray-200 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <p class="text-sm font-medium text-gray-500 uppercase tracking-wider">Shift Distribution</p>
+                        <div class="w-10 h-10 flex items-center justify-center bg-warning/10 rounded-lg">
+                            <iconify-icon icon="solar:clock-circle-bold-duotone"
+                                class="text-xl text-warning"></iconify-icon>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs px-2 py-1 rounded-full bg-success/10 text-success" id="morningCount">M:
+                            -</span>
+                        <span class="text-xs px-2 py-1 rounded-full bg-info/10 text-info" id="afternoonCount">A:
+                            -</span>
+                        <span class="text-xs px-2 py-1 rounded-full bg-warning/10 text-warning" id="nightCount">N:
+                            -</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="bg-white rounded-lg border border-gray-200 p-6">
+                <!-- Search Bar with Filter Button -->
+                <div class="flex items-end gap-3 mb-6">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Employees</label>
+                        <div class="relative">
+                            <iconify-icon icon="solar:magnifer-bold"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></iconify-icon>
+                            <input type="text" id="searchInput" placeholder="Search by name or employee #..."
+                                class="w-full pl-10 pr-12 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        </div>
+                    </div>
+                    <!-- Filter Toggle Button -->
+                    <button id="filterToggleBtn" onclick="toggleFiltersPanel()"
+                        class="px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 whitespace-nowrap"
+                        title="Toggle advanced filters">
+                        <iconify-icon icon="solar:filter-bold" class="text-lg"></iconify-icon>
+                        <span class="hidden sm:inline">Filters</span>
+                    </button>
+                </div>
+
+                <!-- Filters Panel (Collapsible) -->
+                <div id="filtersPanel" class="hidden">
+                    <div
+                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 pb-4 border-b border-gray-200">
+                        <!-- Campaign Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Campaign</label>
+                            <select id="campaignFilter"
+                                class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                <option value="">All Campaigns</option>
+                            </select>
+                        </div>
+
+                        <!-- Shift Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Shift</label>
+                            <select id="shiftFilter"
+                                class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                <option value="">All Shifts</option>
+                            </select>
+                        </div>
+
+                        <!-- Week Selector -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Week Starting</label>
+                            <input type="date" id="weekSelector"
+                                class="w-full px-3 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        </div>
+
+                        <!-- Week Navigation -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Navigate</label>
+                            <div class="flex items-center gap-2">
+                                <button onclick="previousWeek()"
+                                    class="flex-1 px-3 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-1">
+                                    <iconify-icon icon="solar:arrow-left-bold"></iconify-icon>
+                                    Prev
+                                </button>
+                                <button onclick="currentWeek()"
+                                    class="px-3 py-2.5 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10">
+                                    Today
+                                </button>
+                                <button onclick="nextWeek()"
+                                    class="flex-1 px-3 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-1">
+                                    Next
+                                    <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Actions -->
+                    <div class="flex items-center gap-2">
+                        <button onclick="resetFilters()"
+                            class="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+                            <iconify-icon icon="solar:refresh-bold" class="text-lg"></iconify-icon>
+                            Reset
+                        </button>
+                        <button onclick="applyFilters()"
+                            class="px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
+                            <iconify-icon icon="solar:check-circle-bold" class="text-lg"></iconify-icon>
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Week Display -->
+            <div class="bg-white rounded-lg border border-gray-200 px-6 py-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-600">Showing schedule for:</span>
+                    <span id="weekDisplay" class="text-sm font-bold text-primary"></span>
+                </div>
+            </div>
+
+            <!-- Schedule Table -->
+            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900">Weekly Schedule</h3>
+                        <span class="text-sm text-gray-600" id="recordCount">Showing 0 employees</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                                    Employee</th>
+                                <th id="col-mon"
+                                    class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    Monday</th>
+                                <th id="col-tue"
+                                    class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    Tuesday</th>
+                                <th id="col-wed"
+                                    class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    Wednesday</th>
+                                <th id="col-thu"
+                                    class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    Thursday</th>
+                                <th id="col-fri"
+                                    class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    Friday</th>
+                                <th id="col-sat"
+                                    class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    Saturday</th>
+                                <th id="col-sun"
+                                    class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                                    Sunday</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleTableBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                    <iconify-icon icon="solar:refresh-bold"
+                                        class="text-2xl animate-spin mx-auto mb-2"></iconify-icon>
+                                    <p>Loading schedule...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-600" id="paginationInfo">Showing 0 employees</div>
+                        <div class="flex items-center gap-2" id="paginationControls"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="bg-white rounded-lg border border-gray-200 p-6">
+                <h3 class="text-sm font-semibold text-gray-900 mb-3">Shift Legend</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="shift-badge shift-morning">Morning</span>
+                        <span class="text-sm text-gray-600">6am - 2pm, 9am - 5pm</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="shift-badge shift-afternoon">Afternoon</span>
+                        <span class="text-sm text-gray-600">12pm - 8pm, 1pm - 9pm</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="shift-badge shift-night">Night</span>
+                        <span class="text-sm text-gray-600">10pm - 6am, 11pm - 7am</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="shift-badge shift-rest">Rest Day</span>
+                        <span class="text-sm text-gray-600">Day off</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Add/Edit Schedule Modal -->
+<div id="scheduleModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onclick="closeScheduleModal()"></div>
+        <div
+            class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+            <form id="scheduleForm" onsubmit="saveSchedule(event)">
+                <input type="hidden" id="scheduleId">
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Add Schedule</h3>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Employee *</label>
+                        <select id="userId" required
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                            <option value="">Select Employee</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                            <input type="date" id="scheduleDate" required
+                                class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Shift Time *</label>
+                            <select id="shiftTime" required
+                                class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                <option value="">Select Shift</option>
+                                <option value="6am to 2pm">6am to 2pm</option>
+                                <option value="9am to 5pm">9am to 5pm</option>
+                                <option value="12pm to 8pm">12pm to 8pm</option>
+                                <option value="1pm to 9pm">1pm to 9pm</option>
+                                <option value="10pm to 6am">10pm to 6am</option>
+                                <option value="11pm to 7am">11pm to 7am</option>
+                                <option value="Rest Day">Rest Day</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Campaign</label>
+                        <select id="scheduleCampaign"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                            <option value="">Select Campaign</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea id="scheduleNotes" rows="2" placeholder="Optional notes..."
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex gap-3">
+                    <button type="button" onclick="closeScheduleModal()"
+                        class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+                    <button type="submit"
+                        class="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onclick="closeUploadModal()"></div>
+        <div
+            class="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+            <div class="mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Upload Schedule File</h3>
+                <p class="text-sm text-gray-500 mt-1">Upload a CSV file with schedule data</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <iconify-icon icon="solar:upload-bold-duotone" class="text-4xl text-gray-400 mb-2"></iconify-icon>
+                    <p class="text-sm text-gray-600 mb-2">Drag and drop your CSV file here, or</p>
+                    <input type="file" id="uploadFile" accept=".csv" class="hidden" onchange="handleFileSelect(event)">
+                    <button type="button" onclick="document.getElementById('uploadFile').click()"
+                        class="px-4 py-2 text-sm font-medium text-primary border border-primary rounded-lg hover:bg-primary/10">
+                        Browse Files
+                    </button>
+                    <p id="selectedFileName" class="text-sm text-gray-500 mt-2"></p>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm font-medium text-gray-700 mb-2">CSV Format:</p>
+                    <code class="text-xs text-gray-600">employee_no,date,shift_time,campaign,notes</code>
+                </div>
+            </div>
+
+            <div class="mt-6 flex gap-3">
+                <button type="button" onclick="closeUploadModal()"
+                    class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+                <button type="button" onclick="uploadScheduleFile()"
+                    class="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden" onclick="closeSidebar()"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // State
+    let currentWeekStart = null;
+    let employees = [];
+    let filterOptions = { campaigns: [], shifts: [], employees: [] };
+    let editingCell = null;
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        initializePage();
+    });
+
+    function initializePage() {
+        // Set today's date in week selector (Monday of current week)
+        const today = new Date();
+        const mondayOfWeek = new Date(today);
+        mondayOfWeek.setDate(today.getDate() - today.getDay() + 1);
+        currentWeekStart = mondayOfWeek;
+        document.getElementById('weekSelector').valueAsDate = mondayOfWeek;
+
+        // Load filter options
+        loadFilterOptions();
+
+        // Load statistics
+        loadStatistics();
+
+        // Load schedule
+        loadSchedule();
+
+        // Set up event listeners
+        document.getElementById('searchInput').addEventListener('input', debounce(loadSchedule, 300));
+        document.getElementById('headerSearch').addEventListener('keyup', (e) => {
+            document.getElementById('searchInput').value = e.target.value;
+            debounce(loadSchedule, 300)();
+        });
+        document.getElementById('weekSelector').addEventListener('change', () => {
+            currentWeekStart = new Date(document.getElementById('weekSelector').value);
+            loadSchedule();
+            loadStatistics();
+        });
+        document.getElementById('campaignFilter').addEventListener('change', loadSchedule);
+        document.getElementById('shiftFilter').addEventListener('change', loadSchedule);
+
+        // Update column headers with dates
+        updateColumnHeaders();
+
+        // Restore filters panel state
+        const filtersPanelOpen = localStorage.getItem('scheduleFiltersPanelOpen') === 'true';
+        if (filtersPanelOpen) {
+            document.getElementById('filtersPanel').classList.remove('hidden');
+            document.getElementById('filterToggleBtn').classList.add('ring-2', 'ring-primary/30');
+        }
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    async function loadFilterOptions() {
+        try {
+            const response = await fetch('/api/shift-schedule/filter-options');
+            filterOptions = await response.json();
+
+            // Populate campaign filter
+            const campaignSelect = document.getElementById('campaignFilter');
+            const scheduleCampaign = document.getElementById('scheduleCampaign');
+            filterOptions.campaigns.forEach(campaign => {
+                campaignSelect.innerHTML += `<option value="${campaign}">${campaign}</option>`;
+                scheduleCampaign.innerHTML += `<option value="${campaign}">${campaign}</option>`;
+            });
+
+            // Populate shift filter
+            const shiftSelect = document.getElementById('shiftFilter');
+            filterOptions.shifts.forEach(shift => {
+                shiftSelect.innerHTML += `<option value="${shift}">${shift}</option>`;
+            });
+
+            // Populate employees dropdown
+            const userSelect = document.getElementById('userId');
+            filterOptions.employees.forEach(emp => {
+                userSelect.innerHTML += `<option value="${emp.id}">${emp.employee_no} - ${emp.full_name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading filter options:', error);
+        }
+    }
+
+    async function loadStatistics() {
+        const weekDate = document.getElementById('weekSelector').value;
+
+        try {
+            const params = new URLSearchParams();
+            if (weekDate) params.append('week', weekDate);
+
+            const response = await fetch(`/api/shift-schedule/statistics?${params}`);
+            const data = await response.json();
+
+            document.getElementById('totalEmployees').textContent = data.total_employees.toLocaleString();
+            document.getElementById('totalSchedules').textContent = data.total_schedules.toLocaleString();
+            document.getElementById('publishedSchedules').textContent = data.published_schedules.toLocaleString();
+            document.getElementById('unpublishedCount').textContent = `${data.unpublished_schedules} unpublished`;
+            document.getElementById('coveragePercentage').textContent = `${data.coverage_percentage}% coverage`;
+
+            document.getElementById('morningCount').textContent = `M: ${data.morning_shifts}`;
+            document.getElementById('afternoonCount').textContent = `A: ${data.afternoon_shifts}`;
+            document.getElementById('nightCount').textContent = `N: ${data.night_shifts}`;
+        } catch (error) {
+            console.error('Error loading statistics:', error);
+        }
+    }
+
+    async function loadSchedule() {
+        try {
+            const search = document.getElementById('searchInput').value;
+            const campaign = document.getElementById('campaignFilter').value;
+            const shift = document.getElementById('shiftFilter').value;
+            const weekDate = document.getElementById('weekSelector').value;
+
+            const params = new URLSearchParams();
+            if (search) params.append('search', search);
+            if (campaign) params.append('campaign', campaign);
+            if (shift) params.append('shift', shift);
+            if (weekDate) params.append('week', weekDate);
+
+            const response = await fetch(`/api/shift-schedule?${params}`);
+            if (!response.ok) throw new Error('Failed to fetch schedule');
+
+            const data = await response.json();
+            renderScheduleTable(data.schedules, data.week_start);
+            updateWeekDisplay(data.week_start);
+            updateColumnHeaders();
+        } catch (error) {
+            console.error('Error loading schedule:', error);
+            document.getElementById('scheduleTableBody').innerHTML =
+                '<tr><td colspan="8" class="px-6 py-4 text-center text-red-500">Error loading schedule</td></tr>';
+        }
+    }
+
+    function updateWeekDisplay(weekStart) {
+        const start = new Date(weekStart);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+
+        const options = { month: 'short', day: 'numeric', year: 'numeric' };
+        const startStr = start.toLocaleDateString('en-US', options);
+        const endStr = end.toLocaleDateString('en-US', options);
+
+        document.getElementById('weekDisplay').textContent = `${startStr} - ${endStr}`;
+    }
+
+    function updateColumnHeaders() {
+        const weekStart = new Date(document.getElementById('weekSelector').value);
+        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        days.forEach((day, index) => {
+            const date = new Date(weekStart);
+            date.setDate(date.getDate() + index);
+            const isToday = date.getTime() === today.getTime();
+            const header = document.getElementById(`col-${day}`);
+            if (header) {
+                // Apply current-day-header class to the header cell itself
+                if (isToday) {
+                    header.classList.add('current-day-header');
+                } else {
+                    header.classList.remove('current-day-header');
+                }
+
+                header.innerHTML = `
+                    <div class="${isToday ? 'current-day-header' : ''}">
+                        <span class="${isToday ? '' : 'text-gray-500'}">${dayNames[index]}</span><br>
+                        <span class="text-xs ${isToday ? '' : 'text-gray-400'}">${date.getDate()}</span>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    function renderScheduleTable(schedules, weekStart) {
+        const tbody = document.getElementById('scheduleTableBody');
+
+        if (!schedules || schedules.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                        <iconify-icon icon="solar:calendar-bold-duotone" class="text-4xl mb-2"></iconify-icon>
+                        <p>No schedules found</p>
+                        <button onclick="showAddScheduleModal()" class="mt-2 text-primary hover:underline">Add a schedule</button>
+                    </td>
+                </tr>`;
+            document.getElementById('recordCount').textContent = 'Showing 0 employees';
+            return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        tbody.innerHTML = schedules.map(schedule => {
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const cells = days.map((day, index) => {
+                const daySchedule = schedule.schedules[day];
+                const scheduleDate = new Date(weekStart);
+                scheduleDate.setDate(scheduleDate.getDate() + index);
+                scheduleDate.setHours(0, 0, 0, 0);
+
+                const isCurrentDay = scheduleDate.getTime() === today.getTime();
+                const isCurrentDayClass = isCurrentDay ? 'current-day' : '';
+                const dateStr = scheduleDate.toISOString().split('T')[0];
+
+                const shiftBadgeClass = getShiftBadgeClass(daySchedule);
+
+                return `
+                    <td class="shift-cell ${isCurrentDayClass}"
+                        onclick="editShiftCell(${schedule.employee_id}, '${dateStr}', '${daySchedule || ''}', '${schedule.campaign || ''}', this)">
+                        ${daySchedule ? `<span class="shift-badge ${shiftBadgeClass}">${formatShiftTime(daySchedule)}</span>` : '<span class="text-gray-300">-</span>'}
+                    </td>
+                `;
+            }).join('');
+
+            return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-slate-800">
+                    <td class="px-6 py-4 whitespace-nowrap sticky left-0 z-10" style="background-color: var(--bg-surface);">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center mr-3" style="background-color: var(--secondary);">
+                                <span class="text-xs font-medium" style="color: var(--primary);">${schedule.employee_name.charAt(0)}</span>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium" style="color: var(--text-primary);">${schedule.employee_name}</div>
+                                <div class="text-xs" style="color: var(--text-secondary);">${schedule.employee_no} ${schedule.campaign ? '| ' + schedule.campaign : ''}</div>
+                            </div>
+                        </div>
+                    </td>
+                    ${cells}
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById('recordCount').textContent = `Showing ${schedules.length} employees`;
+        document.getElementById('paginationInfo').textContent = `Showing ${schedules.length} employees`;
+    }
+
+    function getShiftBadgeClass(shiftTime) {
+        if (!shiftTime) return '';
+        const shift = shiftTime.toLowerCase();
+        if (shift.includes('rest')) return 'shift-rest';
+        if (shift.includes('6am') || shift.includes('7am') || shift.includes('8am') || shift.includes('9am')) return 'shift-morning';
+        if (shift.includes('12pm') || shift.includes('1pm') || shift.includes('2pm')) return 'shift-afternoon';
+        if (shift.includes('10pm') || shift.includes('11pm') || shift.includes('9pm')) return 'shift-night';
+        return 'shift-morning';
+    }
+
+    function formatShiftTime(shiftTime) {
+        if (!shiftTime) return '-';
+        if (shiftTime.toLowerCase() === 'rest day') return 'REST';
+        // Shorten display: "9am to 5pm" -> "9a-5p"
+        return shiftTime.replace('am', 'a').replace('pm', 'p').replace(' to ', '-');
+    }
+
+    function editShiftCell(employeeId, date, currentShift, campaign, cellElement) {
+        // If already editing, close
+        if (editingCell) {
+            cancelCellEdit();
+        }
+
+        editingCell = cellElement;
+        const shifts = ['', '6am to 2pm', '9am to 5pm', '12pm to 8pm', '1pm to 9pm', '10pm to 6am', '11pm to 7am', 'Rest Day'];
+
+        cellElement.innerHTML = `
+            <select class="shift-select" onchange="saveCellShift(${employeeId}, '${date}', this.value, '${campaign}')" onblur="cancelCellEdit()">
+                ${shifts.map(s => `<option value="${s}" ${s === currentShift ? 'selected' : ''}>${s || 'No Shift'}</option>`).join('')}
+            </select>
+        `;
+
+        const select = cellElement.querySelector('select');
+        select.focus();
+    }
+
+    async function saveCellShift(employeeId, date, shiftTime, campaign) {
+        if (!shiftTime) {
+            cancelCellEdit();
+            loadSchedule();
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/shift-schedule/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: employeeId,
+                    schedule_date: date,
+                    shift_time: shiftTime,
+                    campaign: campaign
+                })
+            });
+
+            if (response.ok) {
+                editingCell = null;
+                loadSchedule();
+                loadStatistics();
+            } else {
+                alert('Error saving schedule');
+                cancelCellEdit();
+            }
+        } catch (error) {
+            console.error('Error saving shift:', error);
+            alert('Error saving schedule');
+            cancelCellEdit();
+        }
+    }
+
+    function cancelCellEdit() {
+        editingCell = null;
+        loadSchedule();
+    }
+
+    function toggleFiltersPanel() {
+        const panel = document.getElementById('filtersPanel');
+        const btn = document.getElementById('filterToggleBtn');
+        if (panel) {
+            panel.classList.toggle('hidden');
+            btn.classList.toggle('ring-2');
+            btn.classList.toggle('ring-primary/30');
+            localStorage.setItem('scheduleFiltersPanelOpen', !panel.classList.contains('hidden'));
+        }
+    }
+
+    function applyFilters() {
+        loadSchedule();
+        loadStatistics();
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('campaignFilter').value = '';
+        document.getElementById('shiftFilter').value = '';
+        currentWeek();
+        applyFilters();
+    }
+
+    function previousWeek() {
+        const current = new Date(document.getElementById('weekSelector').value);
+        current.setDate(current.getDate() - 7);
+        document.getElementById('weekSelector').valueAsDate = current;
+        currentWeekStart = current;
+        loadSchedule();
+        loadStatistics();
+        updateColumnHeaders();
+    }
+
+    function nextWeek() {
+        const current = new Date(document.getElementById('weekSelector').value);
+        current.setDate(current.getDate() + 7);
+        document.getElementById('weekSelector').valueAsDate = current;
+        currentWeekStart = current;
+        loadSchedule();
+        loadStatistics();
+        updateColumnHeaders();
+    }
+
+    function currentWeek() {
+        const today = new Date();
+        const mondayOfWeek = new Date(today);
+        mondayOfWeek.setDate(today.getDate() - today.getDay() + 1);
+        document.getElementById('weekSelector').valueAsDate = mondayOfWeek;
+        currentWeekStart = mondayOfWeek;
+        loadSchedule();
+        loadStatistics();
+        updateColumnHeaders();
+    }
+
+    function showAddScheduleModal() {
+        document.getElementById('modalTitle').textContent = 'Add Schedule';
+        document.getElementById('scheduleForm').reset();
+        document.getElementById('scheduleId').value = '';
+        document.getElementById('scheduleModal').classList.remove('hidden');
+    }
+
+    function closeScheduleModal() {
+        document.getElementById('scheduleModal').classList.add('hidden');
+    }
+
+    async function saveSchedule(event) {
+        event.preventDefault();
+
+        const data = {
+            user_id: parseInt(document.getElementById('userId').value),
+            schedule_date: document.getElementById('scheduleDate').value,
+            shift_time: document.getElementById('shiftTime').value,
+            campaign: document.getElementById('scheduleCampaign').value || '',
+            notes: document.getElementById('scheduleNotes').value || null
+        };
+
+        try {
+            const response = await fetch('/api/shift-schedule/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                closeScheduleModal();
+                loadSchedule();
+                loadStatistics();
+            } else {
+                const error = await response.json();
+                alert(error.detail || 'Error saving schedule');
+            }
+        } catch (error) {
+            console.error('Error saving schedule:', error);
+            alert('Error saving schedule');
+        }
+    }
+
+    function showUploadModal() {
+        document.getElementById('uploadModal').classList.remove('hidden');
+        document.getElementById('selectedFileName').textContent = '';
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadModal').classList.add('hidden');
+    }
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+            document.getElementById('selectedFileName').textContent = file.name;
+        }
+    }
+
+    async function uploadScheduleFile() {
+        const fileInput = document.getElementById('uploadFile');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert('Please select a file first');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async function (e) {
+            const text = e.target.result;
+            const lines = text.split('\n');
+            const schedules = [];
+
+            // Skip header row
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const [employee_no, date, shift_time, campaign, notes] = line.split(',').map(s => s.trim());
+                if (employee_no && date && shift_time) {
+                    schedules.push({ employee_no, date, shift_time, campaign: campaign || '', notes: notes || '' });
+                }
+            }
+
+            if (schedules.length === 0) {
+                alert('No valid schedules found in file');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/shift-schedule/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ schedules })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert(`Successfully uploaded ${result.count} schedules`);
+                    closeUploadModal();
+                    loadSchedule();
+                    loadStatistics();
+                } else {
+                    alert(result.detail || 'Error uploading schedules');
+                }
+            } catch (error) {
+                console.error('Error uploading schedules:', error);
+                alert('Error uploading schedules');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    async function publishSchedules() {
+        const weekDate = document.getElementById('weekSelector').value;
+        if (!confirm('Are you sure you want to publish all schedules for this week? This will make them visible to employees.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/shift-schedule/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ week: weekDate })
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert(`Published ${result.updated_count} schedules`);
+                loadStatistics();
+            } else {
+                alert(result.detail || 'Error publishing schedules');
+            }
+        } catch (error) {
+            console.error('Error publishing schedules:', error);
+            alert('Error publishing schedules');
+        }
+    }
+
+    function exportSchedules() {
+        const params = new URLSearchParams();
+        const search = document.getElementById('searchInput').value;
+        const campaign = document.getElementById('campaignFilter').value;
+        const weekDate = document.getElementById('weekSelector').value;
+
+        if (search) params.append('search', search);
+        if (campaign) params.append('campaign', campaign);
+        if (weekDate) params.append('week', weekDate);
+
+        window.location.href = `/api/shift-schedule/export?${params.toString()}`;
+    }
+
+    // Dropdown & Sidebar
+    function toggleDropdown() {
+        document.getElementById('dropdownMenu').classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', function (e) {
+        const dropdown = document.getElementById('profileDropdown');
+        const menu = document.getElementById('dropdownMenu');
+        if (dropdown && !dropdown.contains(e.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    document.getElementById('sidebarToggle')?.addEventListener('click', function () {
+        document.getElementById('sidebar').classList.remove('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.remove('hidden');
+    });
+
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.add('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.add('hidden');
+    }
+</script>
+{% endblock %}
